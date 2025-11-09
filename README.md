@@ -366,45 +366,6 @@ Common extension points:
 - Hashtags must be `#alphanumeric_` (no spaces or special chars)
 - Click directly on the text or press Cmd/Ctrl+J when cursor is inside
 
-## Roadmap
-
-### Completed
-- GUI migration from terminal TUI to PyQt6
-- Syntax highlighting with theme support
-- Clickable wiki-links and hashtags
-- Content search with background indexing
-- File pinning (inline, not separate panel)
-- Multiple themes with high-contrast light mode
-- Thread-safe shutdown
-- Auto-save with debounce
-- File ordering (alphabetical vs last modified)
-
-### In Progress
-- Full test coverage
-- Documentation completion
-
-### Planned
-- Export to HTML/PDF
-- Tags beyond hashtags (YAML frontmatter)
-- Backlinks panel (show incoming wiki-links)
-- Note templates
-- Vim keybindings mode
-- Windows support
-- Cloud sync indicator
-- Mobile companion app
-- Incremental indexing (currently full rebuild on file changes)
-
-See [PLAN.md](PLAN.md) for detailed architecture and future enhancements.
-
-## Contributing
-
-Contributions welcome! Please:
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Follow the code style guidelines
-4. Add tests for new features
-5. Submit a pull request
-
 ## License
 
 MIT License - see LICENSE file for details.
