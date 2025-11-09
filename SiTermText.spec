@@ -59,7 +59,7 @@ coll = COLLECT(
 app = BUNDLE(
     coll,
     name='SiText.app',
-    icon=None,
+    icon='images/icon.icns',
     bundle_identifier='com.silasslack.sitext',
     version='0.1.0',
     info_plist={
