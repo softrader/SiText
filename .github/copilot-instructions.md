@@ -1,12 +1,13 @@
-# GitHub Copilot Instructions for SiTermText
+# GitHub Copilot Instructions for SiText
 
 ## Project Overview
-SiTermText is a PyQt6-based note-taking application for macOS and Linux. It provides a windowed GUI with three-panel interface for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
+SiText (formerly SiTermText) is a fast, keyboard-driven note-taking application for macOS and Linux. Built with PyQt6, it provides a native GUI with three-panel interface for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
 
-**Architecture**: Native GUI application (not terminal-based), using PyQt6 for UI, plain `.md` files for storage, and background threading for performance.
+**Architecture**: Native GUI application using PyQt6 for UI, plain `.md` files for storage, and background threading (QThread) for performance. Migrated from terminal UI (Textual) to native GUI for better macOS integration and keyboard handling.
 
-**Full project plan**: [PLAN.md](../../PLAN.md)  
-**Comprehensive docs**: [README.md](../../README.md)
+**Key Files**: [README.md](../../README.md) | [PLAN.md](../../PLAN.md) | [MIGRATION.md](../../MIGRATION.md) | [GUI_CONVERSION.md](../../GUI_CONVERSION.md)
+
+**Build Tool**: PyInstaller creates standalone macOS .app bundle (see `build_app.sh` and `SiTermText.spec`)
 
 ## Code Style & Conventions
 
@@ -77,11 +78,13 @@ SiTermText is a PyQt6-based note-taking application for macOS and Linux. It prov
 - **Arrow keys**: Navigate between search input and file list seamlessly
 - **Delete/Backspace**: Delete selected file (with confirmation)
 
-### File Storage
-- All notes stored as plain `.md` files in user-chosen directory
+### File Storage & Configuration
+- All notes stored as plain `.md` files in user-chosen directory (supports nested folders)
 - No database - file system is source of truth
-- Config stored in `~/.sitermtext/config.json` with hierarchical keys
-- Pins tracked per directory for portability
+- Config stored in `~/.sitermtext/config.json` with hierarchical keys (dot notation: `config.get("ui.file_order")`)
+- Pins tracked per directory in `pins.by_dir` for workspace portability
+- Config class provides helper methods: `get_pinned_for_dir()`, `add_pin()`, `remove_pin()`, `ensure_notes_directory()`
+- Environment variable `SITERMTEXT_DIR` overrides config setting for notes directory
 
 ### Search & Indexing
 - **Filename search**: Instant substring matching
@@ -90,7 +93,23 @@ SiTermText is a PyQt6-based note-taking application for macOS and Linux. It prov
 - Debounced at 250ms to avoid excessive re-filtering while typing
 - Index rebuilds on file changes, with interruption support for clean shutdown
 
-## Common Tasks
+## Common Development Tasks
+
+### Building & Running
+```bash
+# Development mode (with virtual environment)
+source .venv/bin/activate
+python -m sitermtext.main_gui
+
+# Build standalone macOS .app bundle
+./build_app.sh  # Uses PyInstaller with SiTermText.spec
+./install.sh    # Copies to /Applications/
+
+# Run built app
+open dist/SiTermText.app
+```
+
+**Important**: Built app targets Apple Silicon (arm64). For Intel or cross-compilation, modify `target_arch` in `SiTermText.spec`.
 
 ### Adding a New GUI Component
 1. Create QWidget subclass in `sitermtext/gui/`
@@ -99,11 +118,35 @@ SiTermText is a PyQt6-based note-taking application for macOS and Linux. It prov
 4. Connect signals to slots in MainWindow for orchestration
 5. Update MainWindow layout to include new component
 
+**Example Signal Pattern**:
+```python
+# In widget (sitermtext/gui/my_widget.py)
+from PyQt6.QtCore import pyqtSignal
+class MyWidget(QWidget):
+    something_happened = pyqtSignal(Path, str)  # Typed signals
+    
+    def _do_something(self):
+        self.something_happened.emit(file_path, "data")
+
+# In MainWindow (sitermtext/gui/main_window.py)
+self.my_widget.something_happened.connect(self._handle_event)
+
+def _handle_event(self, path: Path, data: str):
+    # Handle in main thread, coordinate with other widgets
+    pass
+```
+
 ### Adding a New Theme
-1. Add entry to `gui/themes.py::THEMES` dict with stylesheet string
-2. Include all widget selectors (QMainWindow, QListWidget, QPushButton, etc.)
-3. Test with both light and dark syntax highlighting colors
-4. Consider updating MarkdownHighlighter if special syntax colors needed
+1. Add entry to `gui/themes.py::THEMES` dict with Qt stylesheet (QSS) string
+2. Include all widget selectors: `QMainWindow`, `QListWidget`, `QTextEdit`, `QLineEdit`, `QPushButton`, `QDialog`, `QComboBox`, `QStatusBar`, `QSplitter::handle`, `QScrollBar`
+3. Update `gui/editor.py::MarkdownHighlighter._setup_formats()` to detect your theme:
+   ```python
+   is_light = self.theme in ("light", "solarized_light", "macos_native", "your_theme")
+   ```
+4. Test both light and dark syntax highlighting variants (links, hashtags, headers)
+5. Consider macOS-style scrollbars if targeting native look (see `macos_native` theme)
+
+**Theme Detection**: Light themes use dark blue links (`#0044cc`), dark themes use cyan (`#00ffff`)
 
 ### Adding Keyboard Shortcuts
 1. Add QShortcut in `gui/main_window.py::_setup_shortcuts()`
@@ -113,9 +156,18 @@ SiTermText is a PyQt6-based note-taking application for macOS and Linux. It prov
 
 ### Extending Syntax Highlighting
 1. Add new QTextCharFormat in `gui/editor.py::MarkdownHighlighter._setup_formats()`
-2. Consider light vs dark theme variants (use `is_light` check)
-3. Add precompiled regex pattern to `__init__` for performance
-4. Implement detection logic in `highlightBlock()` method
+2. Theme-aware colors: check `is_light` boolean, provide light/dark variants
+3. **Critical**: Precompile regex pattern in `__init__` (NEVER in `highlightBlock()`):
+   ```python
+   def __init__(self, ...):
+       self.my_pattern = re.compile(r'pattern')  # Compile ONCE
+   
+   def highlightBlock(self, text: str):
+       for match in self.my_pattern.finditer(text):  # Reuse compiled pattern
+           self.setFormat(match.start(), match.end() - match.start(), self.my_format)
+   ```
+4. Current patterns: headers (6 levels), bold, italic, code, links, URLs, wiki-links, hashtags
+5. Call `self.rehighlight()` when theme changes to reapply all formats
 
 ### Adding Background Work
 1. Create QThread subclass (similar to ContentIndexer)

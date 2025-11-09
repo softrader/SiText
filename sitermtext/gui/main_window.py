@@ -118,10 +118,16 @@ class HowToDialog(QDialog):
 - **Delete files**: Select file(s) and press Backspace or Delete
 - **Confirmation**: Always asks before deleting
 
+### Export
+- **Export to PDF**: File → Export to PDF (or Ctrl+E)
+- **Formatted output**: Markdown is converted to styled PDF with proper formatting
+- **Preserves structure**: Headers, lists, code blocks, links all formatted correctly
+
 ### Keyboard Shortcuts
 - **Escape**: Focus search box
 - **Cmd+J / Ctrl+J**: Follow wiki-link at cursor
 - **Cmd+, / Ctrl+,**: Open settings
+- **Ctrl+E**: Export current note to PDF
 - **Enter** (in search): Open selected file or create new file
 - **Backspace/Delete** (in file list): Delete selected file(s)
 - **Shift+Click** (on URL): Open URL in browser
@@ -264,6 +270,9 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("SiText")
         self.resize(1200, 800)
 
+        # Create menu bar
+        self._create_menu_bar()
+
         # Apply dark theme stylesheet
         self._apply_stylesheet()
 
@@ -308,6 +317,8 @@ class MainWindow(QMainWindow):
 
         # Buttons at bottom
         button_layout = QHBoxLayout()
+        button_layout.setContentsMargins(5, 5, 5, 5)
+        button_layout.setSpacing(5)
 
         self.howto_btn = QPushButton("How To")
         self.howto_btn.setFixedHeight(32)
@@ -331,6 +342,8 @@ class MainWindow(QMainWindow):
         self.editor.pin_toggled.connect(self._on_editor_pin_toggled)
         # Hashtag clicks populate search input
         self.editor.hashtag_clicked.connect(self._on_editor_hashtag_clicked)
+        # Export button triggers PDF export
+        self.editor.export_requested.connect(self._export_file_to_pdf)
         main_splitter.addWidget(self.editor)
 
         # Set initial splitter sizes (30% left, 70% right)
@@ -390,6 +403,88 @@ class MainWindow(QMainWindow):
             self.editor.text_edit.insertPlainText("#")
         elif self.file_list.search_input.hasFocus():
             self.file_list.search_input.insert("#")
+
+    def _create_menu_bar(self):
+        """Create the application menu bar."""
+        menubar = self.menuBar()
+
+        # File menu
+        file_menu = menubar.addMenu("File")
+
+        # Export to PDF action
+        export_action = file_menu.addAction("Export to PDF...")
+        export_action.setShortcut("Ctrl+E")
+        export_action.triggered.connect(self._export_to_pdf)
+
+    def _export_to_pdf(self):
+        """Export the current note to PDF."""
+        if not self.editor.current_file:
+            QMessageBox.information(
+                self,
+                "No File Open",
+                "Please open a note to export to PDF."
+            )
+            return
+
+        # Prompt for save location
+        default_name = self.editor.current_file.stem + ".pdf"
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to PDF",
+            str(Path.home() / default_name),
+            "PDF Files (*.pdf)"
+        )
+
+        if not save_path:
+            return
+
+        # Perform export
+        from sitermtext.utils.pdf_export import export_to_pdf
+        success = export_to_pdf(self.editor.current_file, Path(save_path))
+
+        if success:
+            QMessageBox.information(
+                self,
+                "Export Successful",
+                f"PDF exported to:\n{save_path}"
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "Export Failed",
+                "Failed to export PDF. Check console for errors."
+            )
+
+    def _export_file_to_pdf(self, file_path: Path):
+        """Export a specific file to PDF (triggered by Export button)."""
+        # Prompt for save location
+        default_name = file_path.stem + ".pdf"
+        save_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Export to PDF",
+            str(Path.home() / default_name),
+            "PDF Files (*.pdf)"
+        )
+
+        if not save_path:
+            return
+
+        # Perform export
+        from sitermtext.utils.pdf_export import export_to_pdf
+        success = export_to_pdf(file_path, Path(save_path))
+
+        if success:
+            QMessageBox.information(
+                self,
+                "Export Successful",
+                f"PDF exported to:\n{save_path}"
+            )
+        else:
+            QMessageBox.warning(
+                self,
+                "Export Failed",
+                "Failed to export PDF. Check console for errors."
+            )
 
     def _show_howto(self):
         """Show How To dialog."""

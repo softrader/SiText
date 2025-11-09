@@ -345,6 +345,7 @@ class MarkdownEditor(QWidget):
     wiki_link_clicked = pyqtSignal(Path)
     hashtag_clicked = pyqtSignal(str)  # Emits tag (without #)
     pin_toggled = pyqtSignal(Path, bool)
+    export_requested = pyqtSignal(Path)  # Emits current file to export
 
     def __init__(self, notes_directory: Path, parent=None):
         super().__init__(parent)
@@ -367,12 +368,22 @@ class MarkdownEditor(QWidget):
         self.title_label.setStyleSheet("font-weight: bold; padding: 5px;")
         header.addWidget(self.title_label)
         header.addStretch()
+
+        # Export PDF button
+        self.export_button = QPushButton("Export PDF")
+        self.export_button.setToolTip("Export this note to PDF (Ctrl+E)")
+        self.export_button.setEnabled(False)
+        self.export_button.clicked.connect(self._on_export_clicked)
+        header.addWidget(self.export_button)
+
+        # Pin button
         self.pin_button = QPushButton("📌")
         self.pin_button.setCheckable(True)
         self.pin_button.setToolTip("Pin this file (shows at top of file list)")
         self.pin_button.setEnabled(False)
         self.pin_button.clicked.connect(self._on_pin_clicked)
         header.addWidget(self.pin_button)
+
         layout.addLayout(header)
 
         # Text editor with wiki-link support
@@ -419,6 +430,7 @@ class MarkdownEditor(QWidget):
             self._update_title()
             self.text_edit.setFocus()
             self.pin_button.setEnabled(True)
+            self.export_button.setEnabled(True)
         except (OSError, UnicodeDecodeError) as e:
             self.title_label.setText(f"Error loading file: {e}")
 
@@ -450,6 +462,7 @@ class MarkdownEditor(QWidget):
         self._update_title()
         self.pin_button.setEnabled(False)
         self.pin_button.setChecked(False)
+        self.export_button.setEnabled(False)
 
     def is_modified(self) -> bool:
         """Check if the file has unsaved changes."""
@@ -488,6 +501,11 @@ class MarkdownEditor(QWidget):
     def _on_pin_clicked(self, checked: bool):
         if self.current_file is not None:
             self.pin_toggled.emit(self.current_file, bool(checked))
+
+    def _on_export_clicked(self):
+        """Handle export button click."""
+        if self.current_file is not None:
+            self.export_requested.emit(self.current_file)
 
     def _update_autocomplete_lists(self):
         """Update autocomplete lists for wiki-links and hashtags."""
