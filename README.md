@@ -1,20 +1,20 @@
-# SiTermText
+# SiText
 
-A fast, keyboard-driven note-taking app with markdown support, wiki-style linking, and a clean GUI for macOS and Linux.
+A fast, keyboard-driven note-taking application with markdown support, wiki-style linking, and a native macOS interface.
 
 ## Features
 
 ### Core Features
-- 📝 **Markdown editing** with live syntax highlighting (headers, bold, italic, code, links, hashtags)
-- 🔗 **Wiki-style links** - `[[link to other notes]]` - click or press Ctrl/Cmd+J to follow
-- 🏷️ **Hashtag organization** - automatic tag extraction with frequency counts, clickable to filter
-- 📌 **Pin files** - keep important notes at the top of your file list
-- ⌨️ **Keyboard-first** - designed for speed and efficiency with comprehensive shortcuts
-- 📁 **Plain text files** - all notes stored as `.md` files, no database, easy to sync
-- 🔍 **Powerful search** - filter by filename or file content, search hashtags with `#tag`
-- 🎨 **Multiple themes** - dark, light, solarized dark/light, high contrast
-- 💾 **Auto-save** - changes saved automatically after 2 seconds
-- 🖱️ **GUI-based** - native windowed application with PyQt6, not terminal-based
+- **Markdown editing** with live syntax highlighting (headers, bold, italic, code, links, hashtags)
+- **Wiki-style links** - `[[link to other notes]]` - click or press Ctrl/Cmd+J to follow
+- **Hashtag organization** - automatic tag extraction with frequency counts, clickable to filter
+- **Pin files** - keep important notes at the top of your file list
+- **Keyboard-first** - designed for speed and efficiency with comprehensive shortcuts
+- **Plain text files** - all notes stored as `.md` files, no database, easy to sync
+- **Powerful search** - filter by filename or file content, search hashtags with `#tag`
+- **Multiple themes** - macOS native, light, dark, solarized dark/light, high contrast
+- **Auto-save** - changes saved automatically after 2 seconds
+- **Native GUI** - PyQt6-based windowed application with macOS styling
 
 ### Navigation & Interaction
 - **Clickable hashtags** - click any `#tag` in your notes to filter the file list instantly
@@ -137,8 +137,8 @@ pip install -e ".[dev]"
 - **From hashtag panel**: Double-click any hashtag to filter
 
 #### Organizing Notes
-- **Pin important files**: Right-click a file → Pin (or use the 📌 button in editor)
-- **Pinned files** appear at the top of your file list with a 📌 icon
+- **Pin important files**: Right-click a file and select Pin (or use the pin button in editor)
+- **Pinned files** appear at the top of your file list
 - **File ordering**: Settings → choose Alphabetical or Last Modified
 - **Delete files**: Select file → press Delete/Backspace → confirm
 
@@ -368,31 +368,31 @@ Common extension points:
 
 ## Roadmap
 
-### Completed ✅
-- [x] GUI migration from terminal TUI to PyQt6
-- [x] Syntax highlighting with theme support
-- [x] Clickable wiki-links and hashtags
-- [x] Content search with background indexing
-- [x] File pinning (inline, not separate panel)
-- [x] Multiple themes with high-contrast light mode
-- [x] Thread-safe shutdown
-- [x] Auto-save with debounce
-- [x] File ordering (alphabetical vs last modified)
+### Completed
+- GUI migration from terminal TUI to PyQt6
+- Syntax highlighting with theme support
+- Clickable wiki-links and hashtags
+- Content search with background indexing
+- File pinning (inline, not separate panel)
+- Multiple themes with high-contrast light mode
+- Thread-safe shutdown
+- Auto-save with debounce
+- File ordering (alphabetical vs last modified)
 
-### In Progress 🚧
-- [ ] Full test coverage
-- [ ] Documentation completion
+### In Progress
+- Full test coverage
+- Documentation completion
 
-### Planned 📋
-- [ ] Export to HTML/PDF
-- [ ] Tags beyond hashtags (YAML frontmatter)
-- [ ] Backlinks panel (show incoming wiki-links)
-- [ ] Note templates
-- [ ] Vim keybindings mode
-- [ ] Windows support
-- [ ] Cloud sync indicator
-- [ ] Mobile companion app
-- [ ] Incremental indexing (currently full rebuild on file changes)
+### Planned
+- Export to HTML/PDF
+- Tags beyond hashtags (YAML frontmatter)
+- Backlinks panel (show incoming wiki-links)
+- Note templates
+- Vim keybindings mode
+- Windows support
+- Cloud sync indicator
+- Mobile companion app
+- Incremental indexing (currently full rebuild on file changes)
 
 See [PLAN.md](PLAN.md) for detailed architecture and future enhancements.
 
@@ -411,5 +411,5 @@ MIT License - see LICENSE file for details.
 
 ## Credits
 
-Created by Silas Slack  
-Built with PyQt6, Python, and ❤️
+Created by Silas Slack
+Built with PyQt6 and Python
