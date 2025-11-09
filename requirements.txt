@@ -1,0 +1,7 @@
+# Production dependencies
+PyQt6>=6.6.0
+PyQt6-QScintilla>=2.14.0
+markdown>=3.5
+watchdog>=3.0
+
+# Development dependencies (install with: pip install -r requirements-dev.txt)
