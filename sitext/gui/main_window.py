@@ -303,6 +303,7 @@ class MainWindow(QMainWindow):
         self.file_list.set_pinned_names(current_pins)
         self.file_list.file_selected.connect(self._open_file)
         self.file_list.file_deleted.connect(self._on_file_deleted)
+        self.file_list.file_renamed.connect(self._on_file_renamed)
         self.file_list.pin_requested.connect(self._on_pin_requested)
         self.file_list.unpin_requested.connect(self._on_unpin_requested)
         left_layout.addWidget(self.file_list, stretch=3)
@@ -591,6 +592,28 @@ class MainWindow(QMainWindow):
         """Handle file deletion - clear the editor."""
         self.editor.close_file()
         self.hashtag_panel.refresh_hashtags()
+
+    def _on_file_renamed(self, old_path: Path, new_path: Path):
+        """Handle file rename - update editor if the renamed file is currently open."""
+        # If the renamed file is currently open in the editor, update it
+        if self.editor.current_file and self.editor.current_file == old_path:
+            self.editor.current_file = new_path
+            self.editor._update_title()
+        
+        # Update pins if the renamed file was pinned
+        current_pins = set(self.config.get_pinned_for_dir(self.notes_directory))
+        if old_path.name in current_pins:
+            current_pins.discard(old_path.name)
+            current_pins.add(new_path.name)
+            self.config.set_pinned_for_dir(self.notes_directory, list(current_pins))
+            self.config.save()
+            self.file_list.set_pinned_names(current_pins)
+        
+        # Refresh hashtags in case content changed or tags in filename
+        self.hashtag_panel.refresh_hashtags()
+        
+        # Show status message
+        self.statusBar().showMessage(f"Renamed: {old_path.name} → {new_path.name}", 3000)
 
     def _on_file_saved(self, file_path: Path):
         """Handle file saved event."""

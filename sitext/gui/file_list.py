@@ -50,6 +50,7 @@ class FileListWidget(QWidget):
 
     file_selected = pyqtSignal(Path)
     file_deleted = pyqtSignal()
+    file_renamed = pyqtSignal(Path, Path)  # old_path, new_path
     pin_requested = pyqtSignal(Path)
     unpin_requested = pyqtSignal(Path)
 
@@ -350,6 +351,68 @@ class FileListWidget(QWidget):
         self.file_selected.emit(file_path)
         self.search_input.clear()
 
+    def _rename_file(self, file_path: Path):
+        """Rename a file with user input dialog."""
+        from PyQt6.QtWidgets import QInputDialog, QMessageBox
+        
+        # Get relative path for display (without .md extension)
+        rel_path = file_path.relative_to(self.notes_directory)
+        current_name = str(rel_path)[:-3] if str(rel_path).endswith('.md') else str(rel_path)
+        
+        # Show input dialog
+        new_name, ok = QInputDialog.getText(
+            self,
+            "Rename File",
+            "New name:",
+            QLineEdit.EchoMode.Normal,
+            current_name
+        )
+        
+        if not ok or not new_name.strip():
+            return
+        
+        new_name = new_name.strip()
+        
+        # Add .md extension if not present
+        if not new_name.endswith('.md'):
+            new_name = f"{new_name}.md"
+        
+        # Build new path (preserve folder structure)
+        new_path = file_path.parent / new_name
+        
+        # Check if file already exists
+        if new_path.exists():
+            QMessageBox.warning(
+                self,
+                "File Exists",
+                f"A file named '{new_name}' already exists."
+            )
+            return
+        
+        # Rename the file
+        try:
+            file_path.rename(new_path)
+            
+            # Emit signal with old and new paths
+            self.file_renamed.emit(file_path, new_path)
+            
+            # Refresh file list
+            self.refresh_files()
+            
+            # Select the renamed file
+            for i in range(self.file_list.count()):
+                item = self.file_list.item(i)
+                if item.data(Qt.ItemDataRole.UserRole) == new_path:
+                    self.file_list.setCurrentItem(item)
+                    break
+                    
+        except OSError as e:
+            QMessageBox.warning(
+                self,
+                "Rename Failed",
+                f"Could not rename file: {e}"
+            )
+
     def eventFilter(self, obj, event):
         """Filter events for the search input."""
         from PyQt6.QtCore import QEvent, Qt
@@ -375,7 +438,17 @@ class FileListWidget(QWidget):
     def keyPressEvent(self, event):
         """Handle key presses for Enter and Delete in file list."""
         from PyQt6.QtCore import Qt
-        from PyQt6.QtWidgets import QMessageBox
+        from PyQt6.QtWidgets import QMessageBox, QInputDialog
+        
+        # If file list has focus and Shift+Enter is pressed - rename file
+        if self.file_list.hasFocus() and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and event.modifiers() & Qt.KeyboardModifier.ShiftModifier:
+            current_item = self.file_list.currentItem()
+            if current_item:
+                file_path = current_item.data(Qt.ItemDataRole.UserRole)
+                if file_path and isinstance(file_path, Path) and file_path.exists():
+                    self._rename_file(file_path)
+                    event.accept()
+                    return
         
         # If file list has focus and Enter is pressed
         if self.file_list.hasFocus() and event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter):
