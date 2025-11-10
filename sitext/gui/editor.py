@@ -214,8 +214,8 @@ class WikiLinkTextEdit(QTextEdit):
         super().insertFromMimeData(source)
 
     def _insert_image(self, image):
-        """Save pasted image and insert markdown syntax."""
-        from PyQt6.QtGui import QImage
+        """Save pasted image and insert with inline display."""
+        from PyQt6.QtGui import QImage, QTextImageFormat
         from datetime import datetime
         
         if not self.notes_directory:
@@ -234,25 +234,31 @@ class WikiLinkTextEdit(QTextEdit):
         if isinstance(image, QImage):
             image.save(str(filepath), "PNG")
             
-            # Add image to document resources for immediate display
+            # Scale for display if needed
             if image.width() > 800:
                 display_image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
             else:
                 display_image = image
             
+            # Add image to document resources
+            resource_name = f"images/{filename}"
             self.document().addResource(
                 QTextDocument.ResourceType.ImageResource,
-                QUrl(f"images/{filename}"),
+                QUrl(resource_name),
                 display_image
             )
-        
-        # Insert markdown syntax
-        cursor = self.textCursor()
-        cursor.insertText(f"![image](images/{filename})")
+            
+            # Insert image inline using QTextImageFormat
+            cursor = self.textCursor()
+            image_format = QTextImageFormat()
+            image_format.setName(resource_name)
+            cursor.insertImage(image_format)
+            cursor.insertText("\n")
 
     def _insert_image_from_file(self, source_path: Path):
-        """Copy dropped image file and insert markdown syntax."""
+        """Copy dropped image file and insert with inline display."""
         from shutil import copy2
+        from PyQt6.QtGui import QTextImageFormat
         
         if not self.notes_directory:
             return
@@ -280,15 +286,19 @@ class WikiLinkTextEdit(QTextEdit):
             if image.width() > 800:
                 image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
             
+            resource_name = f"images/{dest_path.name}"
             self.document().addResource(
                 QTextDocument.ResourceType.ImageResource,
-                QUrl(f"images/{dest_path.name}"),
+                QUrl(resource_name),
                 image
             )
-        
-        # Insert markdown syntax
-        cursor = self.textCursor()
-        cursor.insertText(f"![image](images/{dest_path.name})")
+            
+            # Insert image inline using QTextImageFormat
+            cursor = self.textCursor()
+            image_format = QTextImageFormat()
+            image_format.setName(resource_name)
+            cursor.insertImage(image_format)
+            cursor.insertText("\n")
 
     def keyPressEvent(self, event):
         """Handle key press events for autocomplete."""
@@ -666,7 +676,7 @@ class MarkdownEditor(QWidget):
 
         # Text editor with wiki-link support
         self.text_edit = WikiLinkTextEdit()
-        self.text_edit.setAcceptRichText(False)
+        self.text_edit.setAcceptRichText(True)  # Enable rich text for image display
         self.text_edit.set_notes_directory(notes_directory)
         
         # Set monospace font
@@ -698,9 +708,11 @@ class MarkdownEditor(QWidget):
         self.highlighter.update_theme(theme)
     
     def _load_images_in_document(self):
-        """Load and display images referenced in markdown."""
+        """Load and display images referenced in markdown, replacing markdown syntax with inline images."""
         if not self.notes_directory:
             return
+        
+        from PyQt6.QtGui import QTextImageFormat
         
         # Find all markdown image references
         text = self.text_edit.toPlainText()
@@ -708,28 +720,38 @@ class MarkdownEditor(QWidget):
         
         document = self.text_edit.document()
         
-        for match in image_pattern.finditer(text):
+        # Collect matches in reverse order to preserve positions when replacing
+        matches = list(image_pattern.finditer(text))
+        
+        for match in reversed(matches):
             image_path_str = match.group(2)
             
-            # Resolve image path relative to notes directory
-            if image_path_str.startswith('images/'):
-                image_path = self.notes_directory / image_path_str
-            else:
-                image_path = self.notes_directory / image_path_str
+            # Resolve relative paths
+            image_path = self.notes_directory / image_path_str
             
             if image_path.exists():
-                # Load image and add to document resources
                 image = QImage(str(image_path))
                 if not image.isNull():
-                    # Scale image if too large (max 800px wide)
+                    # Scale image if too wide
                     if image.width() > 800:
                         image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
                     
+                    # Add to document resources
                     document.addResource(
                         QTextDocument.ResourceType.ImageResource,
                         QUrl(image_path_str),
                         image
                     )
+                    
+                    # Replace markdown syntax with inline image
+                    cursor = self.text_edit.textCursor()
+                    cursor.setPosition(match.start())
+                    cursor.setPosition(match.end(), QTextCursor.MoveMode.KeepAnchor)
+                    
+                    # Insert image using QTextImageFormat
+                    image_format = QTextImageFormat()
+                    image_format.setName(image_path_str)
+                    cursor.insertImage(image_format)
 
     def load_file(self, file_path: Path):
         """Load a file into the editor."""
