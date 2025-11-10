@@ -316,12 +316,12 @@ class WikiLinkTextEdit(QTextEdit):
             )
             return
         
-        # Show progress message
-        QMessageBox.information(
-            self,
-            "OCR in Progress",
-            "Sending image to OpenAI Vision API...\nThis may take a few seconds."
-        )
+        # Get parent window for notifications
+        parent_window = self.window()
+        
+        # Show progress notification
+        if hasattr(parent_window, 'notifications'):
+            parent_window.notifications.show("📸 Sending image to OpenAI Vision API...", duration=5000)
         
         try:
             # Read and encode image
@@ -395,11 +395,9 @@ class WikiLinkTextEdit(QTextEdit):
             cursor.setPosition(match.end(), QTextCursor.MoveMode.KeepAnchor)
             cursor.insertText(extracted_text)
             
-            QMessageBox.information(
-                self,
-                "OCR Complete",
-                "Text extracted and replaced successfully!"
-            )
+            # Show success notification
+            if hasattr(parent_window, 'notifications'):
+                parent_window.notifications.show("✅ Text extracted and replaced successfully!", duration=3000)
             
         except Exception as e:
             QMessageBox.critical(

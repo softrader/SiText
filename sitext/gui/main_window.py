@@ -282,6 +282,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("SiText")
         self.resize(1200, 800)
 
+        # Initialize notification manager
+        from sitext.gui.notification import NotificationManager
+        self.notifications = NotificationManager(self)
+
         # Create menu bar
         self._create_menu_bar()
 
@@ -615,14 +619,14 @@ class MainWindow(QMainWindow):
         # Refresh hashtags in case content changed or tags in filename
         self.hashtag_panel.refresh_hashtags()
         
-        # Show status message
-        self.statusBar().showMessage(f"Renamed: {old_path.name} → {new_path.name}", 3000)
+        # Show notification
+        self.notifications.show(f"📝 Renamed: {old_path.name} → {new_path.name}", duration=3000)
 
     def _on_file_saved(self, file_path: Path):
         """Handle file saved event."""
         self.file_list.refresh_files()
         self.hashtag_panel.refresh_hashtags()
-        self.statusBar().showMessage(f"Saved: {file_path.name}", 3000)
+        self.notifications.show(f"💾 Saved: {file_path.name}", duration=2000)
 
     def _filter_by_hashtag(self, hashtag: str):
         """Filter files by hashtag."""
