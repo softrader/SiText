@@ -212,9 +212,6 @@ def export_to_pdf(markdown_file: Path, output_pdf: Path) -> bool:
     # First, replace emoji so they don't render as '?'
     content = _replace_emoji(content)
     
-    # Remove image markdown syntax (images not supported in PDF export)
-    import re
-    content = re.sub(r'!\[([^\]]*)\]\(([^\)]+)\)', r'[Image: \1]', content)
     md = markdown.Markdown(extensions=[
         'extra',  # Tables, fenced code blocks, etc.
         'nl2br',  # New line to <br>
@@ -264,8 +261,46 @@ def export_to_pdf(markdown_file: Path, output_pdf: Path) -> bool:
     pdf.set_text_color(0, 0, 0)
     pdf.set_draw_color(0, 0, 0)
     pdf.set_fill_color(0, 0, 0)
+    
     try:
-        pdf.write_html(html_content, tag_styles=tag_styles)
+        # Extract and embed images from markdown
+        import re
+        notes_dir = markdown_file.parent
+        image_pattern = re.compile(r'<img[^>]+src="([^"]+)"[^>]*>')
+        
+        # Find all image tags in HTML
+        for match in image_pattern.finditer(html_content):
+            img_path_str = match.group(1)
+            # Resolve relative to markdown file location
+            img_path = notes_dir / img_path_str
+            
+            if img_path.exists():
+                # Replace <img> tag with placeholder text that we'll replace after
+                html_content = html_content.replace(match.group(0), f'[[IMAGE:{img_path}]]')
+        
+        # Split HTML by image placeholders and render alternately
+        parts = re.split(r'\[\[IMAGE:([^\]]+)\]\]', html_content)
+        
+        for i, part in enumerate(parts):
+            if i % 2 == 0:
+                # Regular HTML content
+                if part.strip():
+                    pdf.write_html(part, tag_styles=tag_styles)
+            else:
+                # Image path
+                img_path = Path(part)
+                if img_path.exists():
+                    try:
+                        # Add some spacing before image
+                        pdf.ln(5)
+                        # Insert image (max width 180mm to fit on page with margins)
+                        pdf.image(str(img_path), w=180)
+                        # Add some spacing after image
+                        pdf.ln(5)
+                    except Exception:
+                        # If image fails to load, just skip it
+                        pass
+        
         pdf.output(str(output_pdf))
         return True
     except Exception:
