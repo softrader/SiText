@@ -19,13 +19,12 @@ class NotificationToast(QLabel):
         super().__init__(message, parent)
         self.duration = duration
         
-        # Style the notification with opaque background and subtle border
+        # Style the notification with light grey background
         self.setStyleSheet("""
             QLabel {
-                background-color: rgb(45, 45, 45);
-                color: white;
-                border: 2px solid rgb(80, 80, 80);
-                border-radius: 10px;
+                background-color: rgb(220, 220, 220);
+                color: black;
+                border: 2px solid rgb(180, 180, 180);
                 padding: 14px 24px;
                 font-size: 14px;
             }
