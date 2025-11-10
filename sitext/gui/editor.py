@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QRect, QPoint
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QRect, QPoint, QThread
 from PyQt6.QtGui import QColor, QFont, QMouseEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor, QImage, QTextDocument, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
@@ -15,6 +15,96 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
+
+
+class OCRThread(QThread):
+    """Background thread for OCR processing."""
+    
+    # Signals
+    ocr_complete = pyqtSignal(str, int, str)  # (file_path, insert_position, extracted_text)
+    ocr_error = pyqtSignal(str)  # error message
+    
+    def __init__(self, api_key: str, image_path: Path, file_path: str, insert_position: int):
+        super().__init__()
+        self.api_key = api_key
+        self.image_path = image_path
+        self.file_path = file_path
+        self.insert_position = insert_position
+    
+    def run(self):
+        """Run OCR in background thread."""
+        import base64
+        import json
+        import urllib.request
+        import ssl
+        
+        try:
+            # Read and encode image
+            with open(self.image_path, 'rb') as img_file:
+                image_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            # Determine image format
+            ext = self.image_path.suffix.lower()
+            mime_types = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp'
+            }
+            mime_type = mime_types.get(ext, 'image/png')
+            
+            # Call OpenAI Vision API
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {self.api_key}"
+            }
+            
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Please extract all text from this image. Return only the extracted text, nothing else. If the text is arranged chaotically on the page, try to give it some sensible arrangement in the returned text."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{image_data}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 1000
+            }
+            
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers=headers
+            )
+            
+            # Create SSL context with certifi CA bundle
+            try:
+                import certifi
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+            except ImportError:
+                ssl_context = ssl._create_unverified_context()
+            
+            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                extracted_text = result['choices'][0]['message']['content']
+            
+            # Emit success signal with file path, position, and text
+            self.ocr_complete.emit(self.file_path, self.insert_position, extracted_text)
+            
+        except Exception as e:
+            self.ocr_error.emit(str(e))
 
 
 class WikiLinkTextEdit(QTextEdit):
@@ -285,10 +375,8 @@ class WikiLinkTextEdit(QTextEdit):
                 return
     
     def _ocr_image(self, match, image_path_str):
-        """OCR an image using OpenAI Vision API and replace with text."""
+        """OCR an image using OpenAI Vision API in background thread."""
         from PyQt6.QtWidgets import QMessageBox
-        import base64
-        import json
         
         if not self.notes_directory:
             return
@@ -316,94 +404,76 @@ class WikiLinkTextEdit(QTextEdit):
             )
             return
         
-        # Get parent window for notifications
-        parent_window = self.window()
+        # Get current file path and insert position
+        from sitext.gui.main_window import MainWindow
+        main_window = self.window()
+        if not isinstance(main_window, MainWindow):
+            return
+        
+        current_file = main_window.editor.current_file
+        if not current_file:
+            return
+        
+        insert_position = match.end()
         
         # Show progress notification
-        if hasattr(parent_window, 'notifications'):
-            parent_window.notifications.show("📸 Sending image to OpenAI Vision API...", duration=5000)
+        if hasattr(main_window, 'notifications'):
+            main_window.notifications.show("📸 Extracting text from image...", duration=5000)
         
-        try:
-            # Read and encode image
-            with open(image_path, 'rb') as img_file:
-                image_data = base64.b64encode(img_file.read()).decode('utf-8')
-            
-            # Determine image format
-            ext = image_path.suffix.lower()
-            mime_types = {
-                '.png': 'image/png',
-                '.jpg': 'image/jpeg',
-                '.jpeg': 'image/jpeg',
-                '.gif': 'image/gif',
-                '.webp': 'image/webp'
-            }
-            mime_type = mime_types.get(ext, 'image/png')
-            
-            # Call OpenAI Vision API
-            import urllib.request
-            import ssl
-            
-            url = "https://api.openai.com/v1/chat/completions"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {api_key}"
-            }
-            
-            data = {
-                "model": "gpt-4o-mini",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": "Please extract all text from this image. Return only the extracted text, nothing else.  If the test is arranged chaotically on the page, try to give it some sensible arrangement in the returned text."
-                            },
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:{mime_type};base64,{image_data}"
-                                }
-                            }
-                        ]
-                    }
-                ],
-                "max_tokens": 1000
-            }
-            
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(data).encode('utf-8'),
-                headers=headers
-            )
-            
-            # Create SSL context with certifi CA bundle
-            try:
-                import certifi
-                ssl_context = ssl.create_default_context(cafile=certifi.where())
-            except ImportError:
-                # Fallback: create unverified context (less secure but works)
-                ssl_context = ssl._create_unverified_context()
-            
-            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                extracted_text = result['choices'][0]['message']['content']
-            
-            # Insert extracted text after the image (keep image for reference)
+        # Start OCR in background thread
+        self.ocr_thread = OCRThread(api_key, image_path, str(current_file), insert_position)
+        self.ocr_thread.ocr_complete.connect(self._handle_ocr_complete)
+        self.ocr_thread.ocr_error.connect(self._handle_ocr_error)
+        self.ocr_thread.finished.connect(lambda: self.ocr_thread.deleteLater())
+        self.ocr_thread.start()
+    
+    def _handle_ocr_complete(self, file_path: str, insert_position: int, extracted_text: str):
+        """Handle OCR completion - insert text if still in same file."""
+        from sitext.gui.main_window import MainWindow
+        main_window = self.window()
+        if not isinstance(main_window, MainWindow):
+            return
+        
+        # Check if we're still viewing the same file
+        current_file = main_window.editor.current_file
+        if current_file and str(current_file) == file_path:
+            # Insert text at the saved position
             cursor = self.textCursor()
-            cursor.setPosition(match.end())
+            cursor.setPosition(insert_position)
             cursor.insertText(f"\n\n{extracted_text}\n")
             
             # Show success notification
-            if hasattr(parent_window, 'notifications'):
-                parent_window.notifications.show("✅ Text extracted and inserted below image!", duration=3000)
-            
-        except Exception as e:
-            QMessageBox.critical(
-                self,
-                "OCR Failed",
-                f"Failed to extract text from image:\n{str(e)}"
-            )
+            if hasattr(main_window, 'notifications'):
+                main_window.notifications.show("✅ Text extracted and inserted below image!", duration=3000)
+        else:
+            # File changed - insert text into the file directly
+            try:
+                file_path_obj = Path(file_path)
+                content = file_path_obj.read_text(encoding='utf-8')
+                
+                # Insert at the saved position
+                new_content = (
+                    content[:insert_position] + 
+                    f"\n\n{extracted_text}\n" + 
+                    content[insert_position:]
+                )
+                file_path_obj.write_text(new_content, encoding='utf-8')
+                
+                # Show notification
+                if hasattr(main_window, 'notifications'):
+                    main_window.notifications.show(f"✅ Text extracted and saved to {file_path_obj.name}", duration=3000)
+            except Exception as e:
+                if hasattr(main_window, 'notifications'):
+                    main_window.notifications.show(f"❌ Failed to save extracted text: {str(e)}", duration=5000)
+    
+    def _handle_ocr_error(self, error_msg: str):
+        """Handle OCR error."""
+        from PyQt6.QtWidgets import QMessageBox
+        QMessageBox.critical(
+            self,
+            "OCR Failed",
+            f"Failed to extract text from image:\n{error_msg}"
+        )
 
     def canInsertFromMimeData(self, source):
         """Check if we can insert from mime data (for paste/drop)."""
