@@ -462,7 +462,7 @@ class MainWindow(QMainWindow):
         if success:
             # Show success notification with filename
             filename = Path(save_path).name
-            self.notifications.show(f"📄 PDF exported: {filename}", duration=4000)
+            self.notifications.show(f"PDF exported: {filename}", duration=4000)
         else:
             QMessageBox.warning(
                 self,
@@ -491,7 +491,7 @@ class MainWindow(QMainWindow):
         if success:
             # Show success notification with filename
             filename = Path(save_path).name
-            self.notifications.show(f"📄 PDF exported: {filename}", duration=4000)
+            self.notifications.show(f"PDF exported: {filename}", duration=4000)
         else:
             QMessageBox.warning(
                 self,
@@ -514,6 +514,8 @@ class MainWindow(QMainWindow):
                 self.config.set("notes_directory", str(new_directory))
                 self.notes_directory = new_directory
                 self.statusBar().showMessage(f"Notes: {self.notes_directory}")
+                # Update notification manager's default message
+                self.notifications.default_message = f"Notes: {self.notes_directory}"
                 self.file_list.set_notes_directory(new_directory)
                 self.hashtag_panel.set_notes_directory(new_directory)
                 self.editor.set_notes_directory(new_directory)
@@ -616,13 +618,13 @@ class MainWindow(QMainWindow):
         self.hashtag_panel.refresh_hashtags()
         
         # Show notification
-        self.notifications.show(f"📝 Renamed: {old_path.name} → {new_path.name}", duration=3000)
+        self.notifications.show(f"Renamed: {old_path.name} → {new_path.name}", duration=3000)
 
     def _on_file_saved(self, file_path: Path):
         """Handle file saved event."""
         self.file_list.refresh_files()
         self.hashtag_panel.refresh_hashtags()
-        self.notifications.show(f"💾 Saved: {file_path.name}", duration=2000)
+        self.notifications.show(f"Saved: {file_path.name}", duration=2000)
 
     def _filter_by_hashtag(self, hashtag: str):
         """Filter files by hashtag."""

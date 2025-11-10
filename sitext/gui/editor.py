@@ -357,7 +357,7 @@ class WikiLinkTextEdit(QTextEdit):
                         "content": [
                             {
                                 "type": "text",
-                                "text": "Please extract all text from this image. Return only the extracted text, nothing else."
+                                "text": "Please extract all text from this image. Return only the extracted text, nothing else.  If the test is arranged chaotically on the page, try to give it some sensible arrangement in the returned text."
                             },
                             {
                                 "type": "image_url",
@@ -489,6 +489,18 @@ class WikiLinkTextEdit(QTextEdit):
         if self.completer.popup().isVisible():
             if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return, Qt.Key.Key_Escape, Qt.Key.Key_Tab):
                 event.ignore()
+                return
+
+        # Handle Down arrow on last line: move to end of line instead of no action
+        if event.key() == Qt.Key.Key_Down:
+            cursor = self.textCursor()
+            # Check if we're on the last line
+            cursor_copy = QTextCursor(cursor)
+            cursor_copy.movePosition(QTextCursor.MoveOperation.Down)
+            if cursor_copy.position() == cursor.position():
+                # We're on the last line, move to end of line
+                cursor.movePosition(QTextCursor.MoveOperation.EndOfLine)
+                self.setTextCursor(cursor)
                 return
 
         # Handle Enter key for checkbox/bullet/numbered list auto-continuation
