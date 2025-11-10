@@ -275,24 +275,6 @@ class WikiLinkTextEdit(QTextEdit):
                     is_clickable = True
                     break
 
-        # Check for image markdown syntax and show preview
-        image_pattern = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
-        hovering_image = None
-        for match in image_pattern.finditer(full_text):
-            start, end = match.span()
-            if start <= cursor_pos < end:
-                hovering_image = match.group(2)
-                break
-        
-        if hovering_image:
-            if self._current_hover_image != hovering_image:
-                self._current_hover_image = hovering_image
-                self._preview_timer.start(500)  # Show preview after 500ms hover
-        else:
-            self._current_hover_image = None
-            self._preview_timer.stop()
-            self._hide_image_preview()
-
         # Set cursor shape
         from PyQt6.QtGui import QCursor
         if is_clickable:
@@ -316,12 +298,18 @@ class WikiLinkTextEdit(QTextEdit):
         self.notes_directory = notes_directory
 
     def _show_image_preview(self):
-        """Show image preview overlay."""
+        """Show image preview overlay (legacy method for timer)."""
         if not self._current_hover_image or not self.notes_directory:
+            return
+        self._show_image_preview_for_path(self._current_hover_image)
+    
+    def _show_image_preview_for_path(self, image_path_str: str):
+        """Show image preview overlay for a given image path."""
+        if not self.notes_directory:
             return
         
         # Resolve image path
-        image_path = self.notes_directory / self._current_hover_image
+        image_path = self.notes_directory / image_path_str
         if not image_path.exists():
             return
         
@@ -346,6 +334,8 @@ class WikiLinkTextEdit(QTextEdit):
                 }
             """)
             self._image_preview_label.setWindowFlags(Qt.WindowType.ToolTip)
+            # Make it clickable to dismiss
+            self._image_preview_label.mousePressEvent = lambda e: self._hide_image_preview()
         
         self._image_preview_label.setPixmap(pixmap)
         self._image_preview_label.adjustSize()
@@ -377,10 +367,13 @@ class WikiLinkTextEdit(QTextEdit):
             if start <= cursor_pos < end:
                 image_path = match.group(2)
                 menu = QMenu(self)
+                preview_action = menu.addAction("Preview Image")
                 ocr_action = menu.addAction("OCR with OpenAI Vision API")
                 action = menu.exec(self.mapToGlobal(position))
                 
-                if action == ocr_action:
+                if action == preview_action:
+                    self._show_image_preview_for_path(image_path)
+                elif action == ocr_action:
                     self._ocr_image(match, image_path)
                 return
     
