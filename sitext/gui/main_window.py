@@ -460,11 +460,9 @@ class MainWindow(QMainWindow):
         success = export_to_pdf(self.editor.current_file, Path(save_path))
 
         if success:
-            QMessageBox.information(
-                self,
-                "Export Successful",
-                f"PDF exported to:\n{save_path}"
-            )
+            # Show success notification with filename
+            filename = Path(save_path).name
+            self.notifications.show(f"📄 PDF exported: {filename}", duration=4000)
         else:
             QMessageBox.warning(
                 self,
@@ -491,11 +489,9 @@ class MainWindow(QMainWindow):
         success = export_to_pdf(file_path, Path(save_path))
 
         if success:
-            QMessageBox.information(
-                self,
-                "Export Successful",
-                f"PDF exported to:\n{save_path}"
-            )
+            # Show success notification with filename
+            filename = Path(save_path).name
+            self.notifications.show(f"📄 PDF exported: {filename}", duration=4000)
         else:
             QMessageBox.warning(
                 self,
