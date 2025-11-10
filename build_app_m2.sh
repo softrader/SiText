@@ -45,6 +45,15 @@ rm -rf build dist
 echo "🔨 Running PyInstaller for ARM64..."
 pyinstaller SiText.spec
 
+# Fix macOS bundle for Dock compatibility
+echo ""
+echo "🔧 Fixing macOS app bundle..."
+chmod +x dist/SiText.app/Contents/MacOS/SiText
+xattr -cr dist/SiText.app
+touch dist/SiText.app
+/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f dist/SiText.app
+
+echo ""
 echo "✅ ARM64 build complete!"
 echo ""
 echo "📦 Your app is located at: dist/SiText.app"
