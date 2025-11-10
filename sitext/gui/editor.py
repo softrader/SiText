@@ -389,15 +389,14 @@ class WikiLinkTextEdit(QTextEdit):
                 result = json.loads(response.read().decode('utf-8'))
                 extracted_text = result['choices'][0]['message']['content']
             
-            # Replace image markdown with extracted text
+            # Insert extracted text after the image (keep image for reference)
             cursor = self.textCursor()
-            cursor.setPosition(match.start())
-            cursor.setPosition(match.end(), QTextCursor.MoveMode.KeepAnchor)
-            cursor.insertText(extracted_text)
+            cursor.setPosition(match.end())
+            cursor.insertText(f"\n\n{extracted_text}\n")
             
             # Show success notification
             if hasattr(parent_window, 'notifications'):
-                parent_window.notifications.show("✅ Text extracted and replaced successfully!", duration=3000)
+                parent_window.notifications.show("✅ Text extracted and inserted below image!", duration=3000)
             
         except Exception as e:
             QMessageBox.critical(
