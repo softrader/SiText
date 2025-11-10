@@ -240,7 +240,7 @@ class SettingsDialog(QDialog):
         model_row = QHBoxLayout()
         model_label = QLabel("OCR Model:")
         self.model_combo = QComboBox()
-        self.model_combo.addItems(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4-vision-preview"])
+        self.model_combo.addItems(["gpt-4o-mini", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "gpt-4-vision-preview"])
         current_model = str(self._config.get("openai.ocr_model", "gpt-4o-mini"))
         idx_model = self.model_combo.findText(current_model)
         if idx_model >= 0:
