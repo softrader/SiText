@@ -224,6 +224,19 @@ class SettingsDialog(QDialog):
         order_row.addWidget(self.order_combo)
         layout.addLayout(order_row)
 
+        # OCR Provider selection
+        provider_row = QHBoxLayout()
+        provider_label = QLabel("OCR Provider:")
+        self.provider_combo = QComboBox()
+        self.provider_combo.addItems(["OpenAI", "Google Vision"])
+        current_provider = str(self._config.get("ocr.provider", "OpenAI"))
+        idx_provider = self.provider_combo.findText(current_provider)
+        if idx_provider >= 0:
+            self.provider_combo.setCurrentIndex(idx_provider)
+        provider_row.addWidget(provider_label)
+        provider_row.addWidget(self.provider_combo)
+        layout.addLayout(provider_row)
+
         # OpenAI API Key
         openai_row = QHBoxLayout()
         openai_label = QLabel("OpenAI API Key:")
@@ -235,6 +248,18 @@ class SettingsDialog(QDialog):
         openai_row.addWidget(openai_label)
         openai_row.addWidget(self.openai_input)
         layout.addLayout(openai_row)
+
+        # Google API Key
+        google_row = QHBoxLayout()
+        google_label = QLabel("Google API Key:")
+        self.google_input = QLineEdit()
+        self.google_input.setPlaceholderText("AIza...")
+        self.google_input.setEchoMode(QLineEdit.EchoMode.Password)
+        current_google_key = str(self._config.get("google.api_key", ""))
+        self.google_input.setText(current_google_key)
+        google_row.addWidget(google_label)
+        google_row.addWidget(self.google_input)
+        layout.addLayout(google_row)
 
         # OCR Model selection
         model_row = QHBoxLayout()
@@ -549,9 +574,17 @@ class MainWindow(QMainWindow):
             # Persist select-on-ESC setting
             self.config.set("ui.select_search_on_escape", dialog.select_search_checkbox.isChecked())
 
+            # Persist OCR provider
+            selected_provider = dialog.provider_combo.currentText()
+            self.config.set("ocr.provider", selected_provider)
+
             # Persist OpenAI API key
             openai_key = dialog.openai_input.text().strip()
             self.config.set("openai.api_key", openai_key)
+
+            # Persist Google API key
+            google_key = dialog.google_input.text().strip()
+            self.config.set("google.api_key", google_key)
 
             # Persist OCR model
             selected_model = dialog.model_combo.currentText()

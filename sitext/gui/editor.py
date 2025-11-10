@@ -24,7 +24,7 @@ class OCRThread(QThread):
     ocr_complete = pyqtSignal(str, int, str)  # (file_path, insert_position, extracted_text)
     ocr_error = pyqtSignal(str)  # error message
     
-    def __init__(self, api_key: str, image_path: Path, file_path: str, insert_position: int, context: str = "", model: str = "gpt-4o-mini"):
+    def __init__(self, api_key: str, image_path: Path, file_path: str, insert_position: int, context: str = "", model: str = "gpt-4o-mini", provider: str = "OpenAI"):
         super().__init__()
         self.api_key = api_key
         self.image_path = image_path
@@ -32,9 +32,70 @@ class OCRThread(QThread):
         self.insert_position = insert_position
         self.context = context
         self.model = model
+        self.provider = provider
     
     def run(self):
         """Run OCR in background thread."""
+        if self.provider == "Google Vision":
+            self._run_google_vision()
+        else:
+            self._run_openai_vision()
+    
+    def _run_google_vision(self):
+        """Run OCR using Google Vision API."""
+        import base64
+        import json
+        import urllib.request
+        import ssl
+        
+        try:
+            # Read and encode image
+            with open(self.image_path, 'rb') as img_file:
+                image_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            # Call Google Vision API
+            url = f"https://vision.googleapis.com/v1/images:annotate?key={self.api_key}"
+            headers = {"Content-Type": "application/json"}
+            
+            data = {
+                "requests": [
+                    {
+                        "image": {"content": image_data},
+                        "features": [{"type": "TEXT_DETECTION"}]
+                    }
+                ]
+            }
+            
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers=headers
+            )
+            
+            # Create SSL context
+            try:
+                import certifi
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+            except ImportError:
+                ssl_context = ssl._create_unverified_context()
+            
+            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                
+                # Extract text from response
+                if result.get('responses') and result['responses'][0].get('textAnnotations'):
+                    extracted_text = result['responses'][0]['textAnnotations'][0]['description']
+                else:
+                    extracted_text = ""
+            
+            # Emit success signal
+            self.ocr_complete.emit(self.file_path, self.insert_position, extracted_text)
+            
+        except Exception as e:
+            self.ocr_error.emit(str(e))
+    
+    def _run_openai_vision(self):
+        """Run OCR using OpenAI Vision API."""
         import base64
         import json
         import urllib.request
@@ -378,24 +439,38 @@ class WikiLinkTextEdit(QTextEdit):
                 return
     
     def _ocr_image(self, match, image_path_str):
-        """OCR an image using OpenAI Vision API in background thread."""
+        """OCR an image using selected OCR provider in background thread."""
         from PyQt6.QtWidgets import QMessageBox
         
         if not self.notes_directory:
             return
         
-        # Get API key from config
+        # Get config
         from sitext.config import Config
         config = Config()
-        api_key = config.get("openai.api_key", "").strip()
         
-        if not api_key:
-            QMessageBox.warning(
-                self,
-                "API Key Required",
-                "Please set your OpenAI API key in Settings first."
-            )
-            return
+        # Get OCR provider
+        provider = config.get("ocr.provider", "OpenAI").strip()
+        
+        # Get appropriate API key
+        if provider == "Google Vision":
+            api_key = config.get("google.api_key", "").strip()
+            if not api_key:
+                QMessageBox.warning(
+                    self,
+                    "API Key Required",
+                    "Please set your Google API key in Settings first."
+                )
+                return
+        else:
+            api_key = config.get("openai.api_key", "").strip()
+            if not api_key:
+                QMessageBox.warning(
+                    self,
+                    "API Key Required",
+                    "Please set your OpenAI API key in Settings first."
+                )
+                return
         
         # Resolve image path
         image_path = self.notes_directory / image_path_str
@@ -425,10 +500,10 @@ class WikiLinkTextEdit(QTextEdit):
         
         # Show progress notification
         if hasattr(main_window, 'notifications'):
-            main_window.notifications.show("📸 Extracting text from image...", duration=5000)
+            main_window.notifications.show(f"📸 Extracting text from image ({provider})...", duration=5000)
         
-        # Start OCR in background thread with context and model
-        self.ocr_thread = OCRThread(api_key, image_path, str(current_file), insert_position, ocr_context, ocr_model)
+        # Start OCR in background thread with context, model, and provider
+        self.ocr_thread = OCRThread(api_key, image_path, str(current_file), insert_position, ocr_context, ocr_model, provider)
         self.ocr_thread.ocr_complete.connect(self._handle_ocr_complete)
         self.ocr_thread.ocr_error.connect(self._handle_ocr_error)
         self.ocr_thread.finished.connect(lambda: self.ocr_thread.deleteLater())
