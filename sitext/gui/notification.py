@@ -19,21 +19,22 @@ class NotificationToast(QLabel):
         super().__init__(message, parent)
         self.duration = duration
         
-        # Style the notification
+        # Style the notification with opaque background and subtle border
         self.setStyleSheet("""
             QLabel {
-                background-color: rgba(40, 40, 40, 240);
+                background-color: rgb(45, 45, 45);
                 color: white;
-                border: 1px solid rgba(100, 100, 100, 180);
-                border-radius: 8px;
-                padding: 12px 20px;
-                font-size: 13px;
+                border: 2px solid rgb(80, 80, 80);
+                border-radius: 10px;
+                padding: 14px 24px;
+                font-size: 14px;
             }
         """)
         
         # Set font
         font = QFont()
-        font.setPointSize(13)
+        font.setPointSize(14)
+        font.setBold(True)
         self.setFont(font)
         
         # Make it frameless and stay on top
@@ -42,8 +43,10 @@ class NotificationToast(QLabel):
             Qt.WindowType.Tool |
             Qt.WindowType.WindowStaysOnTopHint
         )
-        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating)
+        
+        # Make cursor change to pointer on hover
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
         
         # Adjust size to content
         self.adjustSize()
@@ -65,6 +68,11 @@ class NotificationToast(QLabel):
         self.fade_animation.setEndValue(0.0)
         self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.fade_animation.finished.connect(self.hide)
+    
+    def mousePressEvent(self, event):
+        """Handle mouse click to dismiss notification."""
+        self._fade_out()
+        event.accept()
     
     def show_notification(self, global_pos=None):
         """Show the notification with animation.
