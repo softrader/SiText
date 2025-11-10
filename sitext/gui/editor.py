@@ -24,13 +24,14 @@ class OCRThread(QThread):
     ocr_complete = pyqtSignal(str, int, str)  # (file_path, insert_position, extracted_text)
     ocr_error = pyqtSignal(str)  # error message
     
-    def __init__(self, api_key: str, image_path: Path, file_path: str, insert_position: int, context: str = ""):
+    def __init__(self, api_key: str, image_path: Path, file_path: str, insert_position: int, context: str = "", model: str = "gpt-4o-mini"):
         super().__init__()
         self.api_key = api_key
         self.image_path = image_path
         self.file_path = file_path
         self.insert_position = insert_position
         self.context = context
+        self.model = model
     
     def run(self):
         """Run OCR in background thread."""
@@ -71,7 +72,7 @@ class OCRThread(QThread):
                 full_prompt = base_prompt
             
             data = {
-                "model": "gpt-4o-mini",
+                "model": self.model,
                 "messages": [
                     {
                         "role": "user",
@@ -425,15 +426,16 @@ class WikiLinkTextEdit(QTextEdit):
         
         insert_position = match.end()
         
-        # Get OCR context from config
+        # Get OCR context and model from config
         ocr_context = config.get("openai.ocr_context", "").strip()
+        ocr_model = config.get("openai.ocr_model", "gpt-4o-mini").strip()
         
         # Show progress notification
         if hasattr(main_window, 'notifications'):
             main_window.notifications.show("📸 Extracting text from image...", duration=5000)
         
-        # Start OCR in background thread with context
-        self.ocr_thread = OCRThread(api_key, image_path, str(current_file), insert_position, ocr_context)
+        # Start OCR in background thread with context and model
+        self.ocr_thread = OCRThread(api_key, image_path, str(current_file), insert_position, ocr_context, ocr_model)
         self.ocr_thread.ocr_complete.connect(self._handle_ocr_complete)
         self.ocr_thread.ocr_error.connect(self._handle_ocr_error)
         self.ocr_thread.finished.connect(lambda: self.ocr_thread.deleteLater())

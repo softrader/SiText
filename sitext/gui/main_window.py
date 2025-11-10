@@ -236,6 +236,19 @@ class SettingsDialog(QDialog):
         openai_row.addWidget(self.openai_input)
         layout.addLayout(openai_row)
 
+        # OCR Model selection
+        model_row = QHBoxLayout()
+        model_label = QLabel("OCR Model:")
+        self.model_combo = QComboBox()
+        self.model_combo.addItems(["gpt-4o-mini", "gpt-4o", "gpt-4-turbo", "gpt-4-vision-preview"])
+        current_model = str(self._config.get("openai.ocr_model", "gpt-4o-mini"))
+        idx_model = self.model_combo.findText(current_model)
+        if idx_model >= 0:
+            self.model_combo.setCurrentIndex(idx_model)
+        model_row.addWidget(model_label)
+        model_row.addWidget(self.model_combo)
+        layout.addLayout(model_row)
+
         # OCR Context
         context_label = QLabel("OCR Context (helps with handwriting):")
         layout.addWidget(context_label)
@@ -539,6 +552,10 @@ class MainWindow(QMainWindow):
             # Persist OpenAI API key
             openai_key = dialog.openai_input.text().strip()
             self.config.set("openai.api_key", openai_key)
+
+            # Persist OCR model
+            selected_model = dialog.model_combo.currentText()
+            self.config.set("openai.ocr_model", selected_model)
 
             # Persist OCR context
             ocr_context = dialog.ocr_context_input.toPlainText().strip()
