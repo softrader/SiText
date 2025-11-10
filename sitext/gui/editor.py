@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl
-from PyQt6.QtGui import QColor, QFont, QMouseEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor, QImage, QTextDocument
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl, QRect, QPoint
+from PyQt6.QtGui import QColor, QFont, QMouseEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor, QImage, QTextDocument, QPainter, QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
@@ -31,6 +31,13 @@ class WikiLinkTextEdit(QTextEdit):
         
         # Store notes directory for image saving (will be set by parent)
         self.notes_directory = None
+        
+        # Image preview overlay
+        self._image_preview_label = None
+        self._preview_timer = QTimer()
+        self._preview_timer.setSingleShot(True)
+        self._preview_timer.timeout.connect(self._show_image_preview)
+        self._current_hover_image = None
 
         # Autocomplete setup
         from PyQt6.QtWidgets import QCompleter
@@ -123,7 +130,7 @@ class WikiLinkTextEdit(QTextEdit):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent):
-        """Handle mouse move to show pointer cursor over clickable elements."""
+        """Handle mouse move to show pointer cursor over clickable elements and image previews."""
         cursor = self.cursorForPosition(event.pos())
         cursor_pos = cursor.position()
         full_text = self.toPlainText()
@@ -166,6 +173,24 @@ class WikiLinkTextEdit(QTextEdit):
                     is_clickable = True
                     break
 
+        # Check for image markdown syntax and show preview
+        image_pattern = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
+        hovering_image = None
+        for match in image_pattern.finditer(full_text):
+            start, end = match.span()
+            if start <= cursor_pos < end:
+                hovering_image = match.group(2)
+                break
+        
+        if hovering_image:
+            if self._current_hover_image != hovering_image:
+                self._current_hover_image = hovering_image
+                self._preview_timer.start(500)  # Show preview after 500ms hover
+        else:
+            self._current_hover_image = None
+            self._preview_timer.stop()
+            self._hide_image_preview()
+
         # Set cursor shape
         from PyQt6.QtGui import QCursor
         if is_clickable:
@@ -187,6 +212,53 @@ class WikiLinkTextEdit(QTextEdit):
     def set_notes_directory(self, notes_directory: Path):
         """Set the notes directory for image saving."""
         self.notes_directory = notes_directory
+
+    def _show_image_preview(self):
+        """Show image preview overlay."""
+        if not self._current_hover_image or not self.notes_directory:
+            return
+        
+        # Resolve image path
+        image_path = self.notes_directory / self._current_hover_image
+        if not image_path.exists():
+            return
+        
+        # Load image
+        pixmap = QPixmap(str(image_path))
+        if pixmap.isNull():
+            return
+        
+        # Scale image if too large (max 400px wide)
+        if pixmap.width() > 400:
+            pixmap = pixmap.scaledToWidth(400, Qt.TransformationMode.SmoothTransformation)
+        
+        # Create or update preview label
+        if not self._image_preview_label:
+            self._image_preview_label = QLabel(self)
+            self._image_preview_label.setStyleSheet("""
+                QLabel {
+                    background-color: white;
+                    border: 2px solid #333;
+                    border-radius: 4px;
+                    padding: 4px;
+                }
+            """)
+            self._image_preview_label.setWindowFlags(Qt.WindowType.ToolTip)
+        
+        self._image_preview_label.setPixmap(pixmap)
+        self._image_preview_label.adjustSize()
+        
+        # Position preview near cursor
+        cursor_rect = self.cursorRect()
+        global_pos = self.mapToGlobal(cursor_rect.bottomRight())
+        self._image_preview_label.move(global_pos.x() + 10, global_pos.y() + 10)
+        self._image_preview_label.show()
+        self._image_preview_label.raise_()
+    
+    def _hide_image_preview(self):
+        """Hide image preview overlay."""
+        if self._image_preview_label:
+            self._image_preview_label.hide()
 
     def canInsertFromMimeData(self, source):
         """Check if we can insert from mime data (for paste/drop)."""
@@ -214,8 +286,8 @@ class WikiLinkTextEdit(QTextEdit):
         super().insertFromMimeData(source)
 
     def _insert_image(self, image):
-        """Save pasted image and insert with inline display."""
-        from PyQt6.QtGui import QImage, QTextImageFormat
+        """Save pasted image and insert markdown syntax."""
+        from PyQt6.QtGui import QImage
         from datetime import datetime
         
         if not self.notes_directory:
@@ -233,32 +305,14 @@ class WikiLinkTextEdit(QTextEdit):
         # Save the image
         if isinstance(image, QImage):
             image.save(str(filepath), "PNG")
-            
-            # Scale for display if needed
-            if image.width() > 800:
-                display_image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
-            else:
-                display_image = image
-            
-            # Add image to document resources
-            resource_name = f"images/{filename}"
-            self.document().addResource(
-                QTextDocument.ResourceType.ImageResource,
-                QUrl(resource_name),
-                display_image
-            )
-            
-            # Insert image inline using QTextImageFormat
-            cursor = self.textCursor()
-            image_format = QTextImageFormat()
-            image_format.setName(resource_name)
-            cursor.insertImage(image_format)
-            cursor.insertText("\n")
+        
+        # Insert markdown syntax
+        cursor = self.textCursor()
+        cursor.insertText(f"![image](images/{filename})\n")
 
     def _insert_image_from_file(self, source_path: Path):
-        """Copy dropped image file and insert with inline display."""
+        """Copy dropped image file and insert markdown syntax."""
         from shutil import copy2
-        from PyQt6.QtGui import QTextImageFormat
         
         if not self.notes_directory:
             return
@@ -280,25 +334,9 @@ class WikiLinkTextEdit(QTextEdit):
         
         copy2(source_path, dest_path)
         
-        # Load and add image to document resources
-        image = QImage(str(dest_path))
-        if not image.isNull():
-            if image.width() > 800:
-                image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
-            
-            resource_name = f"images/{dest_path.name}"
-            self.document().addResource(
-                QTextDocument.ResourceType.ImageResource,
-                QUrl(resource_name),
-                image
-            )
-            
-            # Insert image inline using QTextImageFormat
-            cursor = self.textCursor()
-            image_format = QTextImageFormat()
-            image_format.setName(resource_name)
-            cursor.insertImage(image_format)
-            cursor.insertText("\n")
+        # Insert markdown syntax
+        cursor = self.textCursor()
+        cursor.insertText(f"![image](images/{dest_path.name})\n")
 
     def keyPressEvent(self, event):
         """Handle key press events for autocomplete."""
@@ -676,7 +714,7 @@ class MarkdownEditor(QWidget):
 
         # Text editor with wiki-link support
         self.text_edit = WikiLinkTextEdit()
-        self.text_edit.setAcceptRichText(True)  # Enable rich text for image display
+        self.text_edit.setAcceptRichText(False)  # Plain text mode, images shown as overlay preview
         self.text_edit.set_notes_directory(notes_directory)
         
         # Set monospace font
@@ -707,52 +745,6 @@ class MarkdownEditor(QWidget):
         """Update editor theme for syntax highlighting."""
         self.highlighter.update_theme(theme)
     
-    def _load_images_in_document(self):
-        """Load and display images referenced in markdown, replacing markdown syntax with inline images."""
-        if not self.notes_directory:
-            return
-        
-        from PyQt6.QtGui import QTextImageFormat
-        
-        # Find all markdown image references
-        text = self.text_edit.toPlainText()
-        image_pattern = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
-        
-        document = self.text_edit.document()
-        
-        # Collect matches in reverse order to preserve positions when replacing
-        matches = list(image_pattern.finditer(text))
-        
-        for match in reversed(matches):
-            image_path_str = match.group(2)
-            
-            # Resolve relative paths
-            image_path = self.notes_directory / image_path_str
-            
-            if image_path.exists():
-                image = QImage(str(image_path))
-                if not image.isNull():
-                    # Scale image if too wide
-                    if image.width() > 800:
-                        image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
-                    
-                    # Add to document resources
-                    document.addResource(
-                        QTextDocument.ResourceType.ImageResource,
-                        QUrl(image_path_str),
-                        image
-                    )
-                    
-                    # Replace markdown syntax with inline image
-                    cursor = self.text_edit.textCursor()
-                    cursor.setPosition(match.start())
-                    cursor.setPosition(match.end(), QTextCursor.MoveMode.KeepAnchor)
-                    
-                    # Insert image using QTextImageFormat
-                    image_format = QTextImageFormat()
-                    image_format.setName(image_path_str)
-                    cursor.insertImage(image_format)
-
     def load_file(self, file_path: Path):
         """Load a file into the editor."""
         # Save current file if it has unsaved changes
@@ -786,10 +778,6 @@ class MarkdownEditor(QWidget):
             self._update_autocomplete_lists()
             self._is_modified = False
             self._update_title()
-            
-            # Load images in document
-            self._load_images_in_document()
-            
             self.text_edit.setFocus()
             self.pin_button.setEnabled(True)
             self.export_button.setEnabled(True)
