@@ -335,7 +335,7 @@ class MainWindow(QMainWindow):
         main_splitter.addWidget(left_panel)
 
         # Editor
-        self.editor = MarkdownEditor(self.notes_directory)
+        self.editor = MarkdownEditor(self.notes_directory, config=self.config)
         self.editor.file_saved.connect(self._on_file_saved)
         self.editor.wiki_link_clicked.connect(self._open_file)
         # Sync pin checkbox state when user toggles pin in editor
@@ -596,8 +596,6 @@ class MainWindow(QMainWindow):
         """Handle file saved event."""
         self.file_list.refresh_files()
         self.hashtag_panel.refresh_hashtags()
-        # Update AI vector index for this file
-        self.file_list.index_file_for_ai(file_path)
         self.statusBar().showMessage(f"Saved: {file_path.name}", 3000)
 
     def _filter_by_hashtag(self, hashtag: str):

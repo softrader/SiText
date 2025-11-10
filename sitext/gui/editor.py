@@ -96,8 +96,81 @@ class WikiLinkTextEdit(QTextEdit):
                     event.accept()
                     return
 
+            # Regular click: Check checkboxes to toggle
+            checkbox_pattern = re.compile(r'(\[ \]|\[★\]|\[x\]|\[X\])')
+            for match in checkbox_pattern.finditer(full_text):
+                start, end = match.span()
+                if start <= cursor_pos < end:
+                    # Toggle checkbox state
+                    current_state = match.group(1)
+                    if current_state == '[ ]':
+                        new_state = '[★]'
+                    else:
+                        new_state = '[ ]'
+                    
+                    # Replace in document
+                    cursor.setPosition(start)
+                    cursor.setPosition(end, QTextCursor.MoveMode.KeepAnchor)
+                    cursor.insertText(new_state)
+                    event.accept()
+                    return
+
         # Default behavior
         super().mousePressEvent(event)
+
+    def mouseMoveEvent(self, event: QMouseEvent):
+        """Handle mouse move to show pointer cursor over clickable elements."""
+        cursor = self.cursorForPosition(event.pos())
+        cursor_pos = cursor.position()
+        full_text = self.toPlainText()
+
+        # Check if cursor is over any clickable element
+        is_clickable = False
+
+        # Check wiki-links
+        wikilink_pattern = re.compile(r'\[\[([^\]]+)\]\]')
+        for match in wikilink_pattern.finditer(full_text):
+            start, end = match.span()
+            if start <= cursor_pos < end:
+                is_clickable = True
+                break
+
+        # Check hashtags
+        if not is_clickable:
+            hashtag_pattern = re.compile(r'#([a-zA-Z0-9_]+)')
+            for match in hashtag_pattern.finditer(full_text):
+                start, end = match.span()
+                if start <= cursor_pos < end:
+                    is_clickable = True
+                    break
+
+        # Check checkboxes
+        if not is_clickable:
+            checkbox_pattern = re.compile(r'(\[ \]|\[★\]|\[x\]|\[X\])')
+            for match in checkbox_pattern.finditer(full_text):
+                start, end = match.span()
+                if start <= cursor_pos < end:
+                    is_clickable = True
+                    break
+
+        # Check URLs (with shift modifier visible hint)
+        if not is_clickable:
+            url_pattern = re.compile(r'https?://[^\s\)\]]+|\[([^\]]+)\]\(([^\)]+)\)')
+            for match in url_pattern.finditer(full_text):
+                start, end = match.span()
+                if start <= cursor_pos < end:
+                    is_clickable = True
+                    break
+
+        # Set cursor shape
+        from PyQt6.QtGui import QCursor
+        if is_clickable:
+            self.viewport().setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        else:
+            self.viewport().setCursor(QCursor(Qt.CursorShape.IBeamCursor))
+
+        # Default behavior
+        super().mouseMoveEvent(event)
 
     def set_available_files(self, files: list[str]):
         """Set the list of available files for autocomplete."""
@@ -242,6 +315,8 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         self._re_link = re.compile(r'\[([^\]]+)\]\(([^\)]+)\)')
         self._re_url = re.compile(r'https?://[^\s\)\]]+')  # Bare URLs
         self._re_hashtag = re.compile(r'#([a-zA-Z0-9_]+)')
+        self._re_checkbox_unchecked = re.compile(r'(\[ \])')
+        self._re_checkbox_checked = re.compile(r'(\[★\]|\[x\]|\[X\])')
         
         self._setup_formats()
     
@@ -291,6 +366,18 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         hashtag_format.setForeground(QColor("#cc6600" if is_light else "#e68a00"))
         hashtag_format.setFontWeight(QFont.Weight.Bold)
         self.formats['hashtag'] = hashtag_format
+
+        # Checkboxes - unchecked (gray)
+        checkbox_unchecked_format = QTextCharFormat()
+        checkbox_unchecked_format.setForeground(QColor("#888888"))
+        checkbox_unchecked_format.setFontWeight(QFont.Weight.Bold)
+        self.formats['checkbox_unchecked'] = checkbox_unchecked_format
+
+        # Checkboxes - checked (green)
+        checkbox_checked_format = QTextCharFormat()
+        checkbox_checked_format.setForeground(QColor("#2d7a2d" if is_light else "#5da65d"))
+        checkbox_checked_format.setFontWeight(QFont.Weight.Bold)
+        self.formats['checkbox_checked'] = checkbox_checked_format
     
     def update_theme(self, theme):
         """Update highlighting colors when theme changes."""
@@ -324,6 +411,14 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         for match in self._re_hashtag.finditer(text):
             self.setFormat(match.start(), match.end() - match.start(), self.formats['hashtag'])
 
+        # Checkboxes - unchecked [ ]
+        for match in self._re_checkbox_unchecked.finditer(text):
+            self.setFormat(match.start(), match.end() - match.start(), self.formats['checkbox_unchecked'])
+
+        # Checkboxes - checked [★] [x] [X]
+        for match in self._re_checkbox_checked.finditer(text):
+            self.setFormat(match.start(), match.end() - match.start(), self.formats['checkbox_checked'])
+
         # Links should be applied last to override other formatting
         # Wiki-links ([[link]]) - purple
         for match in self._re_wikilink.finditer(text):
@@ -347,9 +442,10 @@ class MarkdownEditor(QWidget):
     pin_toggled = pyqtSignal(Path, bool)
     export_requested = pyqtSignal(Path)  # Emits current file to export
 
-    def __init__(self, notes_directory: Path, parent=None):
+    def __init__(self, notes_directory: Path, config=None, parent=None):
         super().__init__(parent)
         self.notes_directory = notes_directory
+        self.config = config
         self.current_file: Optional[Path] = None
         self._is_modified = False
         self._auto_save_timer = QTimer()
@@ -419,10 +515,28 @@ class MarkdownEditor(QWidget):
 
     def load_file(self, file_path: Path):
         """Load a file into the editor."""
+        # Save cursor position of current file before loading new one
+        if self.current_file and self.config:
+            cursor = self.text_edit.textCursor()
+            file_key = str(self.current_file.resolve())
+            cursor_positions = self.config.get("editor.cursor_positions", {})
+            cursor_positions[file_key] = cursor.position()
+            self.config.set("editor.cursor_positions", cursor_positions)
+            self.config.save()
+
         try:
             content = file_path.read_text(encoding="utf-8")
             self.text_edit.setPlainText(content)
             self.current_file = file_path
+
+            # Restore cursor position if available
+            if self.config:
+                file_key = str(file_path.resolve())
+                cursor_positions = self.config.get("editor.cursor_positions", {})
+                saved_position = cursor_positions.get(file_key, 0)
+                cursor = self.text_edit.textCursor()
+                cursor.setPosition(min(saved_position, len(content)))
+                self.text_edit.setTextCursor(cursor)
 
             # Update autocomplete lists
             self._update_autocomplete_lists()
@@ -485,7 +599,7 @@ class MarkdownEditor(QWidget):
         """Update the editor title bar."""
         if self.current_file:
             modified = " *" if self._is_modified else ""
-            self.title_label.setText(f"📄 {self.current_file.stem}{modified}")
+            self.title_label.setText(f"{self.current_file.stem}{modified}")
         else:
             self.title_label.setText("No file open")
 
