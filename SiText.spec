@@ -14,6 +14,7 @@ a = Analysis(
         'PyQt6.QtWidgets',
         'markdown',
         'watchdog',
+        'certifi',
     ],
     hookspath=[],
     hooksconfig={},

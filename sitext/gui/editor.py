@@ -377,8 +377,13 @@ class WikiLinkTextEdit(QTextEdit):
                 headers=headers
             )
             
-            # Create SSL context that uses system certificates
-            ssl_context = ssl.create_default_context()
+            # Create SSL context with certifi CA bundle
+            try:
+                import certifi
+                ssl_context = ssl.create_default_context(cafile=certifi.where())
+            except ImportError:
+                # Fallback: create unverified context (less secure but works)
+                ssl_context = ssl._create_unverified_context()
             
             with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
                 result = json.loads(response.read().decode('utf-8'))
