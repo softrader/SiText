@@ -188,6 +188,36 @@ class WikiLinkTextEdit(QTextEdit):
                 event.ignore()
                 return
 
+        # Handle Enter key for checkbox auto-continuation
+        if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return):
+            cursor = self.textCursor()
+            block_text = cursor.block().text()
+            
+            # Check if current line starts with a checkbox
+            checkbox_match = re.match(r'^(\s*)(\[ \]|\[\*\]|\[x\]|\[X\])\s*(.*)$', block_text)
+            if checkbox_match:
+                indent = checkbox_match.group(1)
+                checkbox_type = checkbox_match.group(2)
+                content = checkbox_match.group(3)
+                
+                # If there's no content after the checkbox, remove the checkbox on current line
+                if not content.strip():
+                    # Move to start of line
+                    cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                    # Select to end of line
+                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock, QTextCursor.MoveMode.KeepAnchor)
+                    # Delete the checkbox line
+                    cursor.removeSelectedText()
+                    # Insert newline
+                    super().keyPressEvent(event)
+                    return
+                
+                # Otherwise, insert newline with new unchecked checkbox
+                super().keyPressEvent(event)
+                cursor = self.textCursor()
+                cursor.insertText(f"{indent}[ ] ")
+                return
+
         # Default behavior
         super().keyPressEvent(event)
 
