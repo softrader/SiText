@@ -211,6 +211,10 @@ def export_to_pdf(markdown_file: Path, output_pdf: Path) -> bool:
     # Convert markdown to HTML with extensions
     # First, replace emoji so they don't render as '?'
     content = _replace_emoji(content)
+    
+    # Remove image markdown syntax (images not supported in PDF export)
+    import re
+    content = re.sub(r'!\[([^\]]*)\]\(([^\)]+)\)', r'[Image: \1]', content)
     md = markdown.Markdown(extensions=[
         'extra',  # Tables, fenced code blocks, etc.
         'nl2br',  # New line to <br>
