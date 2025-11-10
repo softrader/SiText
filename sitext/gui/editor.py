@@ -97,14 +97,14 @@ class WikiLinkTextEdit(QTextEdit):
                     return
 
             # Regular click: Check checkboxes to toggle
-            checkbox_pattern = re.compile(r'(\[ \]|\[★\]|\[x\]|\[X\])')
+            checkbox_pattern = re.compile(r'(\[ \]|\[\*\]|\[x\]|\[X\])')
             for match in checkbox_pattern.finditer(full_text):
                 start, end = match.span()
                 if start <= cursor_pos < end:
                     # Toggle checkbox state
                     current_state = match.group(1)
                     if current_state == '[ ]':
-                        new_state = '[★]'
+                        new_state = '[*]'
                     else:
                         new_state = '[ ]'
                     
@@ -146,7 +146,7 @@ class WikiLinkTextEdit(QTextEdit):
 
         # Check checkboxes
         if not is_clickable:
-            checkbox_pattern = re.compile(r'(\[ \]|\[★\]|\[x\]|\[X\])')
+            checkbox_pattern = re.compile(r'(\[ \]|\[\*\]|\[x\]|\[X\])')
             for match in checkbox_pattern.finditer(full_text):
                 start, end = match.span()
                 if start <= cursor_pos < end:
@@ -316,7 +316,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         self._re_url = re.compile(r'https?://[^\s\)\]]+')  # Bare URLs
         self._re_hashtag = re.compile(r'#([a-zA-Z0-9_]+)')
         self._re_checkbox_unchecked = re.compile(r'(\[ \])')
-        self._re_checkbox_checked = re.compile(r'(\[★\]|\[x\]|\[X\])')
+        self._re_checkbox_checked = re.compile(r'(\[\*\]|\[x\]|\[X\])')
         
         self._setup_formats()
     
@@ -415,7 +415,7 @@ class MarkdownHighlighter(QSyntaxHighlighter):
         for match in self._re_checkbox_unchecked.finditer(text):
             self.setFormat(match.start(), match.end() - match.start(), self.formats['checkbox_unchecked'])
 
-        # Checkboxes - checked [★] [x] [X]
+        # Checkboxes - checked [*] [x] [X]
         for match in self._re_checkbox_checked.finditer(text):
             self.setFormat(match.start(), match.end() - match.start(), self.formats['checkbox_checked'])
 
