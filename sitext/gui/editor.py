@@ -28,6 +28,8 @@ class WikiLinkTextEdit(QTextEdit):
         super().__init__(parent)
         self.setMouseTracking(True)
         self.setAcceptDrops(True)  # Enable drag and drop
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self._show_context_menu)
         
         # Store notes directory for image saving (will be set by parent)
         self.notes_directory = None
@@ -259,6 +261,147 @@ class WikiLinkTextEdit(QTextEdit):
         """Hide image preview overlay."""
         if self._image_preview_label:
             self._image_preview_label.hide()
+
+    def _show_context_menu(self, position):
+        """Show context menu for images."""
+        from PyQt6.QtWidgets import QMenu
+        
+        cursor = self.cursorForPosition(position)
+        cursor_pos = cursor.position()
+        full_text = self.toPlainText()
+        
+        # Check if cursor is on an image
+        image_pattern = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
+        for match in image_pattern.finditer(full_text):
+            start, end = match.span()
+            if start <= cursor_pos < end:
+                image_path = match.group(2)
+                menu = QMenu(self)
+                ocr_action = menu.addAction("OCR with OpenAI Vision API")
+                action = menu.exec(self.mapToGlobal(position))
+                
+                if action == ocr_action:
+                    self._ocr_image(match, image_path)
+                return
+    
+    def _ocr_image(self, match, image_path_str):
+        """OCR an image using OpenAI Vision API and replace with text."""
+        from PyQt6.QtWidgets import QMessageBox
+        import base64
+        import json
+        
+        if not self.notes_directory:
+            return
+        
+        # Get API key from config
+        from sitext.config import Config
+        config = Config()
+        api_key = config.get("openai.api_key", "").strip()
+        
+        if not api_key:
+            QMessageBox.warning(
+                self,
+                "API Key Required",
+                "Please set your OpenAI API key in Settings first."
+            )
+            return
+        
+        # Resolve image path
+        image_path = self.notes_directory / image_path_str
+        if not image_path.exists():
+            QMessageBox.warning(
+                self,
+                "Image Not Found",
+                f"Image file not found: {image_path_str}"
+            )
+            return
+        
+        # Show progress message
+        QMessageBox.information(
+            self,
+            "OCR in Progress",
+            "Sending image to OpenAI Vision API...\nThis may take a few seconds."
+        )
+        
+        try:
+            # Read and encode image
+            with open(image_path, 'rb') as img_file:
+                image_data = base64.b64encode(img_file.read()).decode('utf-8')
+            
+            # Determine image format
+            ext = image_path.suffix.lower()
+            mime_types = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp'
+            }
+            mime_type = mime_types.get(ext, 'image/png')
+            
+            # Call OpenAI Vision API
+            import urllib.request
+            import ssl
+            
+            url = "https://api.openai.com/v1/chat/completions"
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {api_key}"
+            }
+            
+            data = {
+                "model": "gpt-4o-mini",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": "Please extract all text from this image. Return only the extracted text, nothing else."
+                            },
+                            {
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{mime_type};base64,{image_data}"
+                                }
+                            }
+                        ]
+                    }
+                ],
+                "max_tokens": 1000
+            }
+            
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(data).encode('utf-8'),
+                headers=headers
+            )
+            
+            # Create SSL context that uses system certificates
+            ssl_context = ssl.create_default_context()
+            
+            with urllib.request.urlopen(req, timeout=30, context=ssl_context) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                extracted_text = result['choices'][0]['message']['content']
+            
+            # Replace image markdown with extracted text
+            cursor = self.textCursor()
+            cursor.setPosition(match.start())
+            cursor.setPosition(match.end(), QTextCursor.MoveMode.KeepAnchor)
+            cursor.insertText(extracted_text)
+            
+            QMessageBox.information(
+                self,
+                "OCR Complete",
+                "Text extracted and replaced successfully!"
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(
+                self,
+                "OCR Failed",
+                f"Failed to extract text from image:\n{str(e)}"
+            )
 
     def canInsertFromMimeData(self, source):
         """Check if we can insert from mime data (for paste/drop)."""

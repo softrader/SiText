@@ -224,6 +224,18 @@ class SettingsDialog(QDialog):
         order_row.addWidget(self.order_combo)
         layout.addLayout(order_row)
 
+        # OpenAI API Key
+        openai_row = QHBoxLayout()
+        openai_label = QLabel("OpenAI API Key:")
+        self.openai_input = QLineEdit()
+        self.openai_input.setPlaceholderText("sk-...")
+        self.openai_input.setEchoMode(QLineEdit.EchoMode.Password)
+        current_key = str(self._config.get("openai.api_key", ""))
+        self.openai_input.setText(current_key)
+        openai_row.addWidget(openai_label)
+        openai_row.addWidget(self.openai_input)
+        layout.addLayout(openai_row)
+
         # Buttons
         button_layout = QHBoxLayout()
         save_btn = QPushButton("Save")
@@ -236,7 +248,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
-        self.resize(520, 220)
+        self.resize(520, 260)
 
     def _update_select_search_label(self):
         state = "ON" if self.select_search_checkbox.isChecked() else "OFF"
@@ -512,18 +524,9 @@ class MainWindow(QMainWindow):
             # Persist select-on-ESC setting
             self.config.set("ui.select_search_on_escape", dialog.select_search_checkbox.isChecked())
 
-            # Persist AI features setting
-            ai_enabled = dialog.ai_checkbox.isChecked()
-            old_ai_enabled = bool(self.config.get("ai.enabled", False))
-            self.config.set("ai.enabled", ai_enabled)
-
-            # If AI was just enabled, update file_list
-            if ai_enabled != old_ai_enabled:
-                self.file_list._ai_enabled = ai_enabled
-                if ai_enabled:
-                    self.statusBar().showMessage("AI features enabled - use Ctrl+Shift+F for semantic search", 5000)
-                else:
-                    self.statusBar().showMessage("AI features disabled", 3000)
+            # Persist OpenAI API key
+            openai_key = dialog.openai_input.text().strip()
+            self.config.set("openai.api_key", openai_key)
 
             # Persist theme selection + apply immediately
             selected_theme = dialog.theme_combo.currentText()
