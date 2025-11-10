@@ -61,7 +61,7 @@ dmypy.json
 !*.md
 
 # Artifacts
-SiTermText.app/
+SiText.app/
 =*
 
 # Config

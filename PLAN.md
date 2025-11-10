@@ -1,4 +1,4 @@
-# SiTermText - Terminal Note-Taking App Plan
+# SiText - Terminal Note-Taking App Plan
 
 ## Overview
 A terminal-based note-taking application for macOS/Linux with markdown support, wiki-style linking, and smart organization features.
@@ -63,17 +63,17 @@ A terminal-based note-taking application for macOS/Linux with markdown support, 
 ### 5. File Storage
 - Files stored as plain `.md` files
 - Custom directory configurable via:
-  - Config file (`~/.sitermtext/config.json`)
+  - Config file (`~/.sitext/config.json`)
   - Command line argument (`--notes-dir /path/to/notes`)
-  - Environment variable (`SITERMTEXT_DIR`)
+  - Environment variable (`SITEXT_DIR`)
 - Default: `~/Documents/Notes`
 
 ## Technical Architecture
 
 ### Project Structure
 ```
-sitermtext/
-├── sitermtext/
+sitext/
+├── sitext/
 │   ├── __init__.py
 │   ├── main.py              # Entry point, Textual app
 │   ├── config.py            # Configuration management

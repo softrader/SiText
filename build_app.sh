@@ -1,9 +1,9 @@
 #!/bin/bash
-# Build script for creating SiTermText.app
+# Build script for creating SiText.app
 
 set -e
 
-echo "🔧 Building SiTermText.app..."
+echo "🔧 Building SiText.app..."
 
 # Activate virtual environment
 source .venv/bin/activate
@@ -12,14 +12,14 @@ source .venv/bin/activate
 rm -rf build dist
 
 # Build the app using PyInstaller
-pyinstaller SiTermText.spec
+pyinstaller SiText.spec
 
 echo "✅ Build complete!"
 echo ""
-echo "📦 Your app is located at: dist/SiTermText.app"
+echo "📦 Your app is located at: dist/SiText.app"
 echo ""
 echo "To install:"
-echo "  cp -r dist/SiTermText.app /Applications/"
+echo "  cp -r dist/SiText.app /Applications/"
 echo ""
 echo "Or run directly:"
-echo "  open dist/SiTermText.app"
+echo "  open dist/SiText.app"

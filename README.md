@@ -45,17 +45,17 @@ Build and install as a native macOS application:
 
 ```bash
 # Clone the repository
-git clone https://github.com/silasslack/sitermtext.git
-cd SiTermText
+git clone https://github.com/silasslack/sitext.git
+cd SiText
 
 # Build the .app bundle
 rm -rf build dist && ./build_app.sh && ./install.sh
 
-# The app will be installed to /Applications/SiTermText.app
+# The app will be installed to /Applications/SiText.app
 # Drag it to your Dock for easy access!
 ```
 
-**First Launch:** Double-click `SiTermText.app` from Applications or Spotlight.
+**First Launch:** Double-click `SiText.app` from Applications or Spotlight.
 
 **Note for Apple Silicon (M1/M2/M3):** For optimal performance, use ARM64 Python:
 ```bash
@@ -76,8 +76,8 @@ For development or if you prefer running from terminal:
 
 ```bash
 # Clone the repository
-git clone https://github.com/silasslack/sitermtext.git
-cd SiTermText
+git clone https://github.com/silasslack/sitext.git
+cd SiText
 
 # Create a virtual environment
 python3 -m venv .venv
@@ -87,7 +87,7 @@ source .venv/bin/activate  # On macOS/Linux
 pip install -e .
 
 # Run directly
-.venv/bin/python -m sitermtext.main_gui
+.venv/bin/python -m sitext.main_gui
 ```
 
 ### Option 3: Development with Testing Tools
@@ -100,14 +100,14 @@ pip install -e ".[dev]"
 ## Quick Start
 
 ### Launch the App
-- **macOS App Bundle**: Double-click `SiTermText.app` from Applications or launch via Spotlight
-- **Development mode**: `.venv/bin/python -m sitermtext.main_gui`
-- **Command line** (if installed): `sitermtext`
+- **macOS App Bundle**: Double-click `SiText.app` from Applications or launch via Spotlight
+- **Development mode**: `.venv/bin/python -m sitext.main_gui`
+- **Command line** (if installed): `sitext`
 
 ### First Time Setup
 1. On first launch, you'll be prompted to choose a notes directory (default: `~/Documents/Notes`)
 2. The app will create the directory if it doesn't exist
-3. Configuration is saved to `~/.sitermtext/config.json`
+3. Configuration is saved to `~/.sitext/config.json`
 
 ### Basic Workflow
 
@@ -180,7 +180,7 @@ Press `Cmd/Ctrl + ,` to open settings where you can configure:
 - **ESC Behavior**: Whether ESC selects all text in search box
 
 ### Configuration File
-Settings are automatically saved to: `~/.sitermtext/config.json`
+Settings are automatically saved to: `~/.sitext/config.json`
 
 Example configuration:
 ```json
@@ -220,7 +220,7 @@ Example configuration:
 
 ### Project Structure
 ```
-sitermtext/
+sitext/
 ├── __init__.py
 ├── config.py              # Configuration management & JSON persistence
 ├── main_gui.py            # GUI entry point (PyQt6 application)
@@ -276,8 +276,8 @@ sitermtext/
 ### Setup Development Environment
 ```bash
 # Clone and set up
-git clone https://github.com/silasslack/sitermtext.git
-cd SiTermText
+git clone https://github.com/silasslack/sitext.git
+cd SiText
 python3 -m venv .venv
 source .venv/bin/activate
 
@@ -288,7 +288,7 @@ pip install -e ".[dev]"
 ### Development Commands
 ```bash
 # Run from source
-.venv/bin/python -m sitermtext.main_gui
+.venv/bin/python -m sitext.main_gui
 
 # Build macOS app
 ./build_app.sh
@@ -300,13 +300,13 @@ pip install -e ".[dev]"
 pytest
 
 # Lint code
-ruff check sitermtext/
+ruff check sitext/
 
 # Format code
-black sitermtext/
+black sitext/
 
 # Type check
-mypy sitermtext/
+mypy sitext/
 ```
 
 ### Code Style & Guidelines
@@ -340,7 +340,7 @@ Common extension points:
   ```
 - **Run from terminal** to see error messages:
   ```bash
-  .venv/bin/python -m sitermtext.main_gui
+  .venv/bin/python -m sitext.main_gui
   ```
 
 ### Paste hangs or is slow

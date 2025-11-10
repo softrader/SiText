@@ -1,4 +1,4 @@
-# SiTermText GUI Conversion - Complete Summary
+# SiText GUI Conversion - Complete Summary
 
 ## What Was Done
 
@@ -8,7 +8,7 @@
 
 ### 2. New Components Created
 
-#### GUI Package (`sitermtext/gui/`)
+#### GUI Package (`sitext/gui/`)
 - `__init__.py` - Package initialization
 - `main_window.py` - Main application window with three-panel layout
 - `file_list.py` - File browser with search and hashtag filtering
@@ -86,7 +86,7 @@
 
 ### 5. Build Configuration Updated
 
-**SiTermText.spec:**
+**SiText.spec:**
 - Changed `console=True` → `console=False` (GUI app)
 - Updated hiddenimports to PyQt6 modules
 - Removed TERM environment variable (not needed)
@@ -114,7 +114,7 @@
 ### 7. Files Modified
 
 ```
-sitermtext/
+sitext/
 ├── gui/                        [NEW]
 │   ├── __init__.py
 │   ├── main_window.py         [NEW]
@@ -132,7 +132,7 @@ sitermtext/
 
 pyproject.toml                 [MODIFIED]
 requirements.txt               [MODIFIED]
-SiTermText.spec               [MODIFIED]
+SiText.spec               [MODIFIED]
 run_app.py                    [MODIFIED]
 README.md                     [MODIFIED]
 MIGRATION.md                  [NEW]
@@ -180,13 +180,13 @@ MIGRATION.md                  [NEW]
 
 ```bash
 # Run from build directory
-open dist/SiTermText.app
+open dist/SiText.app
 
 # Or install to Applications
-cp -r dist/SiTermText.app /Applications/
+cp -r dist/SiText.app /Applications/
 
 # Or use command line
-sitermtext
+sitext
 ```
 
 ## Development Commands
@@ -196,7 +196,7 @@ sitermtext
 .venv/bin/pip install -e .
 
 # Run in development
-.venv/bin/python -m sitermtext.main_gui
+.venv/bin/python -m sitext.main_gui
 
 # Build standalone app
 ./build_app.sh

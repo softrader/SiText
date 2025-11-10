@@ -43,7 +43,7 @@ rm -rf build dist
 
 # Build the app using PyInstaller with ARM64 target
 echo "🔨 Running PyInstaller for ARM64..."
-pyinstaller SiTermText.spec
+pyinstaller SiText.spec
 
 echo "✅ ARM64 build complete!"
 echo ""

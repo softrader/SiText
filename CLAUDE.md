@@ -1,7 +1,7 @@
-# Claude AI Instructions for SiTermText
+# Claude AI Instructions for SiText
 
 ## Project Identity
-**SiTermText** - A fast, keyboard-driven note-taking application built with PyQt6 for macOS and Linux. Provides a clean windowed GUI for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
+**SiText** - A fast, keyboard-driven note-taking application built with PyQt6 for macOS and Linux. Provides a clean windowed GUI for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
 
 **Architecture**: Native GUI (PyQt6), plain `.md` file storage, background threading for performance.
 
@@ -22,7 +22,7 @@
 - **PyQt6** for GUI (signals/slots pattern)
 - **QThread** for background work (content indexing)
 - **QSyntaxHighlighter** for markdown syntax coloring
-- Plain **JSON** for config (`~/.sitermtext/config.json`)
+- Plain **JSON** for config (`~/.sitext/config.json`)
 - No database - filesystem is source of truth
 
 ## Critical Architecture Patterns
@@ -71,7 +71,7 @@
 
 ### Adding New Features
 1. **New signal?** Define in widget class: `my_event = pyqtSignal(DataType)`
-2. **New UI component?** Create QWidget subclass in `sitermtext/gui/`
+2. **New UI component?** Create QWidget subclass in `sitext/gui/`
 3. **Background work?** Create QThread subclass with interruption support
 4. **New setting?** Add to `config.py::DEFAULT_CONFIG`, then update SettingsDialog
 5. **New shortcut?** Add QShortcut in `MainWindow._setup_shortcuts()`
@@ -107,7 +107,7 @@
 ## Project Structure Deep Dive
 
 ```
-sitermtext/
+sitext/
 ├── config.py              # Config persistence (JSON), pin management
 ├── main_gui.py            # Entry point: QApplication setup
 ├── main.py                # (deprecated TUI entry - ignore)
@@ -160,7 +160,7 @@ sitermtext/
 - MainWindow connects to populate search with `#tag`
 
 #### `config.py` - Settings Persistence
-- JSON config at `~/.sitermtext/config.json`
+- JSON config at `~/.sitext/config.json`
 - Dot notation access: `config.get("ui.file_order", "alphabetical")`
 - Pin storage: `pins.by_dir[abs_dir_path] = ["file1.md", "file2.md"]`
 - Helper methods: `get_pinned_for_dir()`, `add_pin()`, `remove_pin()`

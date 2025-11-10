@@ -1,13 +1,13 @@
 # GitHub Copilot Instructions for SiText
 
 ## Project Overview
-SiText (formerly SiTermText) is a fast, keyboard-driven note-taking application for macOS and Linux. Built with PyQt6, it provides a native GUI with three-panel interface for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
+SiText is a fast, keyboard-driven note-taking application for macOS and Linux. Built with PyQt6, it provides a native GUI with three-panel interface for managing markdown notes with wiki-style linking, clickable hashtags, full-text search, and file pinning.
 
 **Architecture**: Native GUI application using PyQt6 for UI, plain `.md` files for storage, and background threading (QThread) for performance. Migrated from terminal UI (Textual) to native GUI for better macOS integration and keyboard handling.
 
 **Key Files**: [README.md](../../README.md) | [PLAN.md](../../PLAN.md) | [MIGRATION.md](../../MIGRATION.md) | [GUI_CONVERSION.md](../../GUI_CONVERSION.md)
 
-**Build Tool**: PyInstaller creates standalone macOS .app bundle (see `build_app.sh` and `SiTermText.spec`)
+**Build Tool**: PyInstaller creates standalone macOS .app bundle (see `build_app.sh` and `SiText.spec`)
 
 ## Code Style & Conventions
 
@@ -30,7 +30,7 @@ SiText (formerly SiTermText) is a fast, keyboard-driven note-taking application 
 ## Architecture Patterns
 
 ### Component Structure (PyQt6)
-- Each UI component is a QWidget in `sitermtext/gui/`
+- Each UI component is a QWidget in `sitext/gui/`
 - Components communicate via Qt signals and slots (type-safe, decoupled)
 - Keep widgets focused: single responsibility principle
 - Main orchestration happens in `MainWindow`, not individual widgets
@@ -81,10 +81,10 @@ SiText (formerly SiTermText) is a fast, keyboard-driven note-taking application 
 ### File Storage & Configuration
 - All notes stored as plain `.md` files in user-chosen directory (supports nested folders)
 - No database - file system is source of truth
-- Config stored in `~/.sitermtext/config.json` with hierarchical keys (dot notation: `config.get("ui.file_order")`)
+- Config stored in `~/.sitext/config.json` with hierarchical keys (dot notation: `config.get("ui.file_order")`)
 - Pins tracked per directory in `pins.by_dir` for workspace portability
 - Config class provides helper methods: `get_pinned_for_dir()`, `add_pin()`, `remove_pin()`, `ensure_notes_directory()`
-- Environment variable `SITERMTEXT_DIR` overrides config setting for notes directory
+- Environment variable `SITEXT_DIR` overrides config setting for notes directory
 
 ### Search & Indexing
 - **Filename search**: Instant substring matching
@@ -99,20 +99,20 @@ SiText (formerly SiTermText) is a fast, keyboard-driven note-taking application 
 ```bash
 # Development mode (with virtual environment)
 source .venv/bin/activate
-python -m sitermtext.main_gui
+python -m sitext.main_gui
 
 # Build standalone macOS .app bundle
-./build_app.sh  # Uses PyInstaller with SiTermText.spec
+./build_app.sh  # Uses PyInstaller with SiText.spec
 ./install.sh    # Copies to /Applications/
 
 # Run built app
-open dist/SiTermText.app
+open dist/SiText.app
 ```
 
-**Important**: Built app targets Apple Silicon (arm64). For Intel or cross-compilation, modify `target_arch` in `SiTermText.spec`.
+**Important**: Built app targets Apple Silicon (arm64). For Intel or cross-compilation, modify `target_arch` in `SiText.spec`.
 
 ### Adding a New GUI Component
-1. Create QWidget subclass in `sitermtext/gui/`
+1. Create QWidget subclass in `sitext/gui/`
 2. Define pyqtSignal attributes for communication (type-safe events)
 3. Implement `__init__` with UI layout (QVBoxLayout, QHBoxLayout, etc.)
 4. Connect signals to slots in MainWindow for orchestration
@@ -120,15 +120,15 @@ open dist/SiTermText.app
 
 **Example Signal Pattern**:
 ```python
-# In widget (sitermtext/gui/my_widget.py)
+# In widget (sitext/gui/my_widget.py)
 from PyQt6.QtCore import pyqtSignal
 class MyWidget(QWidget):
     something_happened = pyqtSignal(Path, str)  # Typed signals
-    
+
     def _do_something(self):
         self.something_happened.emit(file_path, "data")
 
-# In MainWindow (sitermtext/gui/main_window.py)
+# In MainWindow (sitext/gui/main_window.py)
 self.my_widget.something_happened.connect(self._handle_event)
 
 def _handle_event(self, path: Path, data: str):

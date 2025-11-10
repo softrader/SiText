@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "sitermtext"
+name = "sitext"
 version = "0.1.0"
 description = "A fast, keyboard-driven note-taking app with markdown and wiki-style linking"
 readme = "README.md"
@@ -47,12 +47,12 @@ dev = [
 ]
 
 [project.scripts]
-sitermtext = "sitermtext.main_gui:run"
+sitext = "sitext.main_gui:run"
 
 [project.urls]
-Homepage = "https://github.com/silasslack/sitermtext"
-Repository = "https://github.com/silasslack/sitermtext"
-Issues = "https://github.com/silasslack/sitermtext/issues"
+Homepage = "https://github.com/silasslack/sitext"
+Repository = "https://github.com/silasslack/sitext"
+Issues = "https://github.com/silasslack/sitext/issues"
 
 [tool.black]
 line-length = 100

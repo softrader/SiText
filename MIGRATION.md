@@ -1,6 +1,6 @@
 # Migration from TUI to GUI
 
-SiTermText has been upgraded from a terminal-based interface (Textual) to a native GUI application (PyQt6).
+SiText has been upgraded from a terminal-based interface (Textual) to a native GUI application (PyQt6).
 
 ## What Changed
 
@@ -17,7 +17,7 @@ SiTermText has been upgraded from a terminal-based interface (Textual) to a nati
 - **Same shortcuts**: Ctrl+J for links, Ctrl+, for settings, etc.
 - **Same look**: Black/green terminal aesthetic preserved
 - **Same data**: Plain `.md` files in your notes directory
-- **Same config**: Uses `~/.sitermtext/config.json`
+- **Same config**: Uses `~/.sitext/config.json`
 - **Auto-save**: Still saves 2 seconds after you stop typing
 
 ## For Existing Users
@@ -25,7 +25,7 @@ SiTermText has been upgraded from a terminal-based interface (Textual) to a nati
 Your notes and configuration are **100% compatible**. Just install the new version:
 
 ```bash
-cd ~/Development/SiTermText
+cd ~/Development/SiText
 git pull
 ./build_app.sh
 ./install.sh
@@ -33,7 +33,7 @@ git pull
 
 Or copy the .app to Applications:
 ```bash
-cp -r dist/SiTermText.app /Applications/
+cp -r dist/SiText.app /Applications/
 ```
 
 ## Dependencies Changed
