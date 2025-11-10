@@ -6,6 +6,9 @@ A fast, keyboard-driven note-taking application with markdown support, wiki-styl
 
 ### Core Features
 - **Markdown editing** with live syntax highlighting (headers, bold, italic, code, links, hashtags)
+- **Image support** - paste or drag-drop images into notes, automatic storage and markdown insertion
+- **Image hover preview** - hover over image markdown to see a popup preview
+- **OCR with OpenAI** - right-click images to extract text using OpenAI Vision API
 - **Wiki-style links** - `[[link to other notes]]` - click or press Ctrl/Cmd+J to follow
 - **Hashtag organization** - automatic tag extraction with frequency counts, clickable to filter
 - **Pin files** - keep important notes at the top of your file list
@@ -15,6 +18,7 @@ A fast, keyboard-driven note-taking application with markdown support, wiki-styl
 - **Multiple themes** - macOS native, light, dark, solarized dark/light, high contrast
 - **Auto-save** - changes saved automatically after 2 seconds
 - **Native GUI** - PyQt6-based windowed application with macOS styling
+- **Status bar notifications** - non-intrusive notifications for saves, renames, and exports
 
 ### Navigation & Interaction
 - **Clickable hashtags** - click any `#tag` in your notes to filter the file list instantly
@@ -124,6 +128,10 @@ pip install -e ".[dev]"
 - **Code**: `` `inline code` ``
 - **Links**: `[text](url)` or `[[wiki-link]]`
 - **Hashtags**: `#projectname` (automatically extracted)
+- **Images**: Paste from clipboard or drag-drop image files
+  - Automatically saved to `notes_directory/images/`
+  - Inserted as `![alt](images/filename.png)`
+  - Hover over markdown to preview image
 
 #### Linking Notes
 1. Type `[[other note]]` to create a wiki-link
@@ -136,11 +144,21 @@ pip install -e ".[dev]"
 - **By hashtag**: Type `#tag` to filter files containing that tag
 - **From hashtag panel**: Double-click any hashtag to filter
 
+#### Working with Images
+- **Add images**: Paste from clipboard (Cmd/Ctrl+V) or drag-drop image files
+- **Preview images**: Hover mouse over image markdown (`![alt](path)`) for popup preview
+- **OCR text extraction**: Right-click on image markdown → "OCR with OpenAI Vision API"
+  - Requires OpenAI API key (set in Settings)
+  - Extracts text and inserts below image
+  - Preserves original image for reference
+- **Export to PDF**: Settings → Export as PDF (includes embedded images)
+
 #### Organizing Notes
 - **Pin important files**: Right-click a file and select Pin (or use the pin button in editor)
 - **Pinned files** appear at the top of your file list
 - **File ordering**: Settings → choose Alphabetical or Last Modified
 - **Delete files**: Select file → press Delete/Backspace → confirm
+- **Rename files**: Select file → press Shift+Enter → type new name
 
 ## Keyboard Shortcuts
 
@@ -158,8 +176,10 @@ pip install -e ".[dev]"
 |-----|--------|
 | `Cmd/Ctrl + J` | Follow wiki-link under cursor |
 | `↓` (in search) | Move to file list (first item) |
+| `↓` (on last line) | Move cursor to end of line |
 | `↑` (in search) | Move to file list (last item) |
 | `Delete/Backspace` | Delete selected file (with confirmation) |
+| `Shift + Enter` | Rename selected file |
 | Double-click | Open file, follow link, or filter by hashtag |
 
 ### Editing
@@ -178,6 +198,7 @@ Press `Cmd/Ctrl + ,` to open settings where you can configure:
 - **Theme**: Select from 5 themes (dark, light, solarized dark/light, high contrast)
 - **File Order**: Alphabetical or Last Modified
 - **ESC Behavior**: Whether ESC selects all text in search box
+- **OpenAI API Key**: Set your API key for OCR features (stored securely)
 
 ### Configuration File
 Settings are automatically saved to: `~/.sitext/config.json`
@@ -198,6 +219,9 @@ Example configuration:
         "TODO.md"
       ]
     }
+  },
+  "openai": {
+    "api_key": "sk-..."
   }
 }
 ```
