@@ -66,14 +66,14 @@ class NotificationToast(QLabel):
         self.fade_animation.setEasingCurve(QEasingCurve.Type.InOutQuad)
         self.fade_animation.finished.connect(self.hide)
     
-    def show_notification(self):
-        """Show the notification with animation."""
-        if self.parent():
-            # Position in top right corner of parent
-            parent_rect = self.parent().rect()
-            x = parent_rect.right() - self.width() - 20
-            y = 20
-            self.move(x, y)
+    def show_notification(self, global_pos=None):
+        """Show the notification with animation.
+        
+        Args:
+            global_pos: QPoint with global screen coordinates (optional)
+        """
+        if global_pos:
+            self.move(global_pos)
         
         self.show()
         self.raise_()
@@ -112,9 +112,9 @@ class NotificationManager:
         toast = NotificationToast(message, self.parent, duration)
         
         # Position it (stack if multiple notifications)
+        global_pos = None
         if self.parent:
-            parent_rect = self.parent.rect()
-            x = parent_rect.right() - toast.width() - 20
+            parent_geometry = self.parent.geometry()
             
             # Stack notifications vertically
             y = 20
@@ -122,10 +122,14 @@ class NotificationManager:
                 if existing.isVisible():
                     y += existing.height() + 10
             
-            toast.move(x, y)
+            # Calculate position in global coordinates
+            global_pos = self.parent.mapToGlobal(QPoint(
+                parent_geometry.width() - toast.width() - 20,
+                y
+            ))
         
         self.notifications.append(toast)
-        toast.show_notification()
+        toast.show_notification(global_pos)
         
         # Clean up after it's hidden
         QTimer.singleShot(duration + 500, lambda: self._cleanup(toast))
