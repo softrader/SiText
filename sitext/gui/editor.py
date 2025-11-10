@@ -4,8 +4,8 @@ import re
 from pathlib import Path
 from typing import Optional
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QColor, QFont, QMouseEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal, QUrl
+from PyQt6.QtGui import QColor, QFont, QMouseEvent, QSyntaxHighlighter, QTextCharFormat, QTextCursor, QImage, QTextDocument
 from PyQt6.QtWidgets import (
     QApplication,
     QLabel,
@@ -27,6 +27,10 @@ class WikiLinkTextEdit(QTextEdit):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setMouseTracking(True)
+        self.setAcceptDrops(True)  # Enable drag and drop
+        
+        # Store notes directory for image saving (will be set by parent)
+        self.notes_directory = None
 
         # Autocomplete setup
         from PyQt6.QtWidgets import QCompleter
@@ -179,6 +183,112 @@ class WikiLinkTextEdit(QTextEdit):
     def set_available_hashtags(self, hashtags: list[str]):
         """Set the list of available hashtags for autocomplete."""
         self._available_hashtags = hashtags
+
+    def set_notes_directory(self, notes_directory: Path):
+        """Set the notes directory for image saving."""
+        self.notes_directory = notes_directory
+
+    def canInsertFromMimeData(self, source):
+        """Check if we can insert from mime data (for paste/drop)."""
+        if source.hasImage() or source.hasUrls():
+            return True
+        return super().canInsertFromMimeData(source)
+
+    def insertFromMimeData(self, source):
+        """Handle pasting images."""
+        if source.hasImage():
+            image = source.imageData()
+            if image and self.notes_directory:
+                self._insert_image(image)
+                return
+        elif source.hasUrls():
+            # Handle dropped image files
+            for url in source.urls():
+                if url.isLocalFile():
+                    file_path = Path(url.toLocalFile())
+                    if file_path.suffix.lower() in ('.png', '.jpg', '.jpeg', '.gif', '.bmp', '.svg'):
+                        self._insert_image_from_file(file_path)
+                        return
+        
+        # Default behavior for text
+        super().insertFromMimeData(source)
+
+    def _insert_image(self, image):
+        """Save pasted image and insert markdown syntax."""
+        from PyQt6.QtGui import QImage
+        from datetime import datetime
+        
+        if not self.notes_directory:
+            return
+        
+        # Create images directory if it doesn't exist
+        images_dir = self.notes_directory / "images"
+        images_dir.mkdir(exist_ok=True)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"pasted_{timestamp}.png"
+        filepath = images_dir / filename
+        
+        # Save the image
+        if isinstance(image, QImage):
+            image.save(str(filepath), "PNG")
+            
+            # Add image to document resources for immediate display
+            if image.width() > 800:
+                display_image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
+            else:
+                display_image = image
+            
+            self.document().addResource(
+                QTextDocument.ResourceType.ImageResource,
+                QUrl(f"images/{filename}"),
+                display_image
+            )
+        
+        # Insert markdown syntax
+        cursor = self.textCursor()
+        cursor.insertText(f"![image](images/{filename})")
+
+    def _insert_image_from_file(self, source_path: Path):
+        """Copy dropped image file and insert markdown syntax."""
+        from shutil import copy2
+        
+        if not self.notes_directory:
+            return
+        
+        # Create images directory if it doesn't exist
+        images_dir = self.notes_directory / "images"
+        images_dir.mkdir(exist_ok=True)
+        
+        # Copy file to images directory
+        dest_path = images_dir / source_path.name
+        
+        # If file exists, add number to make unique
+        counter = 1
+        while dest_path.exists():
+            stem = source_path.stem
+            suffix = source_path.suffix
+            dest_path = images_dir / f"{stem}_{counter}{suffix}"
+            counter += 1
+        
+        copy2(source_path, dest_path)
+        
+        # Load and add image to document resources
+        image = QImage(str(dest_path))
+        if not image.isNull():
+            if image.width() > 800:
+                image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
+            
+            self.document().addResource(
+                QTextDocument.ResourceType.ImageResource,
+                QUrl(f"images/{dest_path.name}"),
+                image
+            )
+        
+        # Insert markdown syntax
+        cursor = self.textCursor()
+        cursor.insertText(f"![image](images/{dest_path.name})")
 
     def keyPressEvent(self, event):
         """Handle key press events for autocomplete."""
@@ -557,6 +667,7 @@ class MarkdownEditor(QWidget):
         # Text editor with wiki-link support
         self.text_edit = WikiLinkTextEdit()
         self.text_edit.setAcceptRichText(False)
+        self.text_edit.set_notes_directory(notes_directory)
         
         # Set monospace font
         font = QFont("Monaco", 13)
@@ -580,10 +691,45 @@ class MarkdownEditor(QWidget):
     def set_notes_directory(self, directory: Path):
         """Change the notes directory."""
         self.notes_directory = directory
+        self.text_edit.set_notes_directory(directory)
     
     def set_theme(self, theme: str):
         """Update editor theme for syntax highlighting."""
         self.highlighter.update_theme(theme)
+    
+    def _load_images_in_document(self):
+        """Load and display images referenced in markdown."""
+        if not self.notes_directory:
+            return
+        
+        # Find all markdown image references
+        text = self.text_edit.toPlainText()
+        image_pattern = re.compile(r'!\[([^\]]*)\]\(([^\)]+)\)')
+        
+        document = self.text_edit.document()
+        
+        for match in image_pattern.finditer(text):
+            image_path_str = match.group(2)
+            
+            # Resolve image path relative to notes directory
+            if image_path_str.startswith('images/'):
+                image_path = self.notes_directory / image_path_str
+            else:
+                image_path = self.notes_directory / image_path_str
+            
+            if image_path.exists():
+                # Load image and add to document resources
+                image = QImage(str(image_path))
+                if not image.isNull():
+                    # Scale image if too large (max 800px wide)
+                    if image.width() > 800:
+                        image = image.scaledToWidth(800, Qt.TransformationMode.SmoothTransformation)
+                    
+                    document.addResource(
+                        QTextDocument.ResourceType.ImageResource,
+                        QUrl(image_path_str),
+                        image
+                    )
 
     def load_file(self, file_path: Path):
         """Load a file into the editor."""
@@ -618,6 +764,10 @@ class MarkdownEditor(QWidget):
             self._update_autocomplete_lists()
             self._is_modified = False
             self._update_title()
+            
+            # Load images in document
+            self._load_images_in_document()
+            
             self.text_edit.setFocus()
             self.pin_button.setEnabled(True)
             self.export_button.setEnabled(True)
