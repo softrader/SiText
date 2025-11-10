@@ -236,6 +236,16 @@ class SettingsDialog(QDialog):
         openai_row.addWidget(self.openai_input)
         layout.addLayout(openai_row)
 
+        # OCR Context
+        context_label = QLabel("OCR Context (helps with handwriting):")
+        layout.addWidget(context_label)
+        self.ocr_context_input = QTextEdit()
+        self.ocr_context_input.setPlaceholderText("e.g., My job is software development. Colleagues: John, Sarah. Family: Kate, Oscar...")
+        self.ocr_context_input.setMaximumHeight(80)
+        current_context = str(self._config.get("openai.ocr_context", ""))
+        self.ocr_context_input.setPlainText(current_context)
+        layout.addWidget(self.ocr_context_input)
+
         # Buttons
         button_layout = QHBoxLayout()
         save_btn = QPushButton("Save")
@@ -248,7 +258,7 @@ class SettingsDialog(QDialog):
         layout.addLayout(button_layout)
 
         self.setLayout(layout)
-        self.resize(520, 260)
+        self.resize(600, 400)
 
     def _update_select_search_label(self):
         state = "ON" if self.select_search_checkbox.isChecked() else "OFF"
@@ -529,6 +539,10 @@ class MainWindow(QMainWindow):
             # Persist OpenAI API key
             openai_key = dialog.openai_input.text().strip()
             self.config.set("openai.api_key", openai_key)
+
+            # Persist OCR context
+            ocr_context = dialog.ocr_context_input.toPlainText().strip()
+            self.config.set("openai.ocr_context", ocr_context)
 
             # Persist theme selection + apply immediately
             selected_theme = dialog.theme_combo.currentText()

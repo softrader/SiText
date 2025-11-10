@@ -5,16 +5,26 @@ from PIL import Image, ImageDraw
 from pathlib import Path
 
 
-def add_rounded_corners(input_path: Path, output_path: Path, radius_percent: float = 0.225):
-    """Add rounded corners to an image (iOS app icon style).
+def add_rounded_corners(input_path: Path, output_path: Path, radius_percent: float = 0.225, padding_percent: float = 0.08):
+    """Add rounded corners to an image (iOS-style) with padding for Dock.
     
     Args:
         input_path: Path to input image
         output_path: Path to save output image
         radius_percent: Corner radius as percentage of image size (0.225 = 22.5% for iOS-style)
+        padding_percent: Transparent padding around icon (0.08 = 8% on each side)
     """
     # Open the image
     img = Image.open(input_path).convert("RGBA")
+    original_width, original_height = img.size
+    
+    # Calculate padding (8% on each side = 16% total reduction)
+    padding = int(min(original_width, original_height) * padding_percent)
+    
+    # Resize image to leave room for padding
+    new_size = original_width - (padding * 2)
+    img = img.resize((new_size, new_size), Image.LANCZOS)
+    
     width, height = img.size
     
     # Calculate corner radius (iOS uses ~22.5% of icon size)
@@ -36,13 +46,17 @@ def add_rounded_corners(input_path: Path, output_path: Path, radius_percent: flo
     draw.ellipse([(width - radius * 2, height - radius * 2), (width, height)], fill=255)
     
     # Create output image with transparency
-    output = Image.new('RGBA', (width, height), (0, 0, 0, 0))
-    output.paste(img, (0, 0))
-    output.putalpha(mask)
+    rounded_img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+    rounded_img.paste(img, (0, 0))
+    rounded_img.putalpha(mask)
+    
+    # Create final output with padding (back to original size)
+    output = Image.new('RGBA', (original_width, original_height), (0, 0, 0, 0))
+    output.paste(rounded_img, (padding, padding))
     
     # Save the result
     output.save(output_path, 'PNG')
-    print(f"Created rounded icon: {output_path}")
+    print(f"Created rounded icon with {padding_percent*100:.0f}% padding: {output_path}")
 
 
 def main():
