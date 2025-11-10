@@ -188,7 +188,7 @@ class WikiLinkTextEdit(QTextEdit):
                 event.ignore()
                 return
 
-        # Handle Enter key for checkbox auto-continuation
+        # Handle Enter key for checkbox/bullet/numbered list auto-continuation
         if event.key() in (Qt.Key.Key_Enter, Qt.Key.Key_Return):
             cursor = self.textCursor()
             block_text = cursor.block().text()
@@ -216,6 +216,48 @@ class WikiLinkTextEdit(QTextEdit):
                 super().keyPressEvent(event)
                 cursor = self.textCursor()
                 cursor.insertText(f"{indent}[ ] ")
+                return
+            
+            # Check if current line starts with a bullet point (- or * or •)
+            bullet_match = re.match(r'^(\s*)([-*•])\s+(.*)$', block_text)
+            if bullet_match:
+                indent = bullet_match.group(1)
+                bullet_char = bullet_match.group(2)
+                content = bullet_match.group(3)
+                
+                # If there's no content after the bullet, remove the bullet on current line
+                if not content.strip():
+                    cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock, QTextCursor.MoveMode.KeepAnchor)
+                    cursor.removeSelectedText()
+                    super().keyPressEvent(event)
+                    return
+                
+                # Otherwise, insert newline with new bullet
+                super().keyPressEvent(event)
+                cursor = self.textCursor()
+                cursor.insertText(f"{indent}{bullet_char} ")
+                return
+            
+            # Check if current line starts with a numbered list (1. 2. etc.)
+            numbered_match = re.match(r'^(\s*)(\d+)\.\s+(.*)$', block_text)
+            if numbered_match:
+                indent = numbered_match.group(1)
+                current_num = int(numbered_match.group(2))
+                content = numbered_match.group(3)
+                
+                # If there's no content after the number, remove the number on current line
+                if not content.strip():
+                    cursor.movePosition(QTextCursor.MoveOperation.StartOfBlock)
+                    cursor.movePosition(QTextCursor.MoveOperation.EndOfBlock, QTextCursor.MoveMode.KeepAnchor)
+                    cursor.removeSelectedText()
+                    super().keyPressEvent(event)
+                    return
+                
+                # Otherwise, insert newline with next number
+                super().keyPressEvent(event)
+                cursor = self.textCursor()
+                cursor.insertText(f"{indent}{current_num + 1}. ")
                 return
 
         # Default behavior
