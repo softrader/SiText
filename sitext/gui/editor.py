@@ -515,6 +515,10 @@ class MarkdownEditor(QWidget):
 
     def load_file(self, file_path: Path):
         """Load a file into the editor."""
+        # Save current file if it has unsaved changes
+        if self.current_file and self._is_modified:
+            self.save_file()
+        
         # Save cursor position of current file before loading new one
         if self.current_file and self.config:
             cursor = self.text_edit.textCursor()
