@@ -125,7 +125,19 @@ class OCRThread(QThread):
             }
             
             # Build OCR prompt with optional context
-            base_prompt = "Please extract all text from this image. Return only the extracted text, nothing else. If the text is arranged chaotically on the page, try to give it some sensible arrangement in the returned text. Feel free to correct spellings, but remember that capitals may be acronyms or initialisms. If a word seems to be a nonsense word based on the context, try to think about what the right word would be that fits the context and is close enough to the handwriting image."
+            base_prompt = (
+                "Please transcribe all handwritten text from this image as accurately as possible.\n"
+                "- Return only the extracted text, with no commentary or markdown formatting.\n"
+                "- Preserve paragraphs and line breaks where they make sense, but reorganize if the text is "
+                "scattered chaotically on the page.\n"
+                "- Correct obvious spelling mistakes and normalize spacing, but retain deliberate capitals "
+                "(they may be acronyms or initialisms).\n"
+                "- If a word appears unclear or nonsensical, infer the most likely intended word based on "
+                "context and neighbouring text.\n"
+                "- Ignore purely decorative marks, doodles, or arrows unless they contain words.\n"
+                "- Output plain UTF-8 text suitable for saving as Markdown.\n"
+                "- If the text includes items, bullet points, or hashtags, preserve them exactly as written."
+            )
             
             if self.context:
                 full_prompt = f"{base_prompt}\n\nContext about the writer to help with ambiguous handwriting:\n{self.context}"
